@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using ECommerceApp.RyanW84.Data;
 using ECommerceApp.RyanW84.Data.DTO;
@@ -80,7 +79,7 @@ namespace ECommerceApp.RyanW84.Repositories
         }
 
         public async Task<PaginatedResponseDto<List<Product>>> GetAllProductsAsync(
-            ProductQueryParameters parameters,
+            ProductQueryParameters? parameters,
             CancellationToken cancellationToken = default
         )
         {

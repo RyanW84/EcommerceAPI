@@ -1,4 +1,3 @@
-using System.Net;
 using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
 using ECommerceApp.RyanW84.Interfaces.Helpers;
@@ -9,7 +8,7 @@ public class CategoryProcessingHelper : ICategoryProcessingHelper
 {
     public ApiResponseDto<Category>? ValidateCreateRequest(ApiRequestDto<Category> request)
     {
-        if (request?.Payload is null || string.IsNullOrWhiteSpace(request.Payload.Name))
+        if (request.Payload is null || string.IsNullOrWhiteSpace(request.Payload.Name))
             return ApiResponseDto<Category>.Failure(System.Net.HttpStatusCode.BadRequest, "Category name is required.");
         return null;
     }
@@ -19,7 +18,7 @@ public class CategoryProcessingHelper : ICategoryProcessingHelper
         return new Category
         {
             Name = incoming.Name.Trim(),
-            Description = incoming.Description?.Trim() ?? string.Empty,
+            Description = incoming.Description.Trim(),
         };
     }
 
@@ -29,7 +28,7 @@ public class CategoryProcessingHelper : ICategoryProcessingHelper
         {
             CategoryId = id,
             Name = string.IsNullOrWhiteSpace(incoming.Name) ? existing.Name : incoming.Name.Trim(),
-            Description = string.IsNullOrWhiteSpace(incoming.Description) ? existing.Description : incoming.Description!.Trim(),
+            Description = string.IsNullOrWhiteSpace(incoming.Description) ? existing.Description : incoming.Description.Trim(),
             Products = existing.Products,
             Sales = existing.Sales,
             IsDeleted = existing.IsDeleted,

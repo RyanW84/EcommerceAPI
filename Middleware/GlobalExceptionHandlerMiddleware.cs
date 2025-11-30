@@ -7,7 +7,7 @@ public class GlobalExceptionHandlerMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
@@ -44,14 +44,14 @@ public class GlobalExceptionHandlerMiddleware
         {
             error = new
             {
-                message = message,
+                message,
                 type = exception.GetType().Name,
                 timestamp = DateTime.UtcNow,
             },
         };
 
         context.Response.StatusCode = statusCode;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, _jsonOptions));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, JsonOptions));
     }
 
     private static (int StatusCode, string Message) MapExceptionToResponse(Exception exception) =>

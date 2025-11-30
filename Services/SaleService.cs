@@ -1,16 +1,10 @@
-using System;
-using System.Linq;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using ECommerceApp.RyanW84.Data;
 using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
 using ECommerceApp.RyanW84.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using ECommerceApp.RyanW84.Interfaces.Helpers;
-using ECommerceApp.RyanW84.Services.Helpers;
 
 namespace ECommerceApp.RyanW84.Services;
 
@@ -65,13 +59,23 @@ public class SaleService(
     }
 
     public async Task<PaginatedResponseDto<List<Sale>>> GetSalesAsync(
-        SaleQueryParameters parameters,
+        SaleQueryParameters? parameters,
         CancellationToken cancellationToken = default
     )
     {
         try
         {
-            parameters ??= new SaleQueryParameters();
+            parameters ??= new SaleQueryParameters
+            {
+                Page = 0,
+                PageSize = 0,
+                StartDate = null,
+                EndDate = null,
+                CustomerName = null,
+                CustomerEmail = null,
+                SortBy = null,
+                SortDirection = null
+            };
             _saleQueryHelper.NormalizeDateRange(parameters);
 
             var result = await _saleRepository.GetAllSalesAsync(parameters, cancellationToken);
@@ -123,7 +127,7 @@ public class SaleService(
     }
 
     public async Task<
-        ApiResponseDto<System.Collections.Generic.List<Sale>>
+        ApiResponseDto<List<Sale>>
     > GetHistoricalSalesAsync(CancellationToken cancellationToken = default)
     {
         List<Sale> list = await _db
@@ -135,7 +139,7 @@ public class SaleService(
 
         _saleQueryHelper.FilterHistoricalItems(list);
 
-        return ApiResponseDto<System.Collections.Generic.List<Sale>>.Success(list);
+        return ApiResponseDto<List<Sale>>.Success(list);
     }
 
     public async Task<ApiResponseDto<Sale>> UpdateSaleAsync(
@@ -144,7 +148,7 @@ public class SaleService(
         CancellationToken cancellationToken = default
     )
     {
-        if (request?.Payload is null)
+        if (request.Payload is null)
             return ApiResponseDto<Sale>.Failure(HttpStatusCode.BadRequest, "Invalid request payload");
 
         // Ensure route id is enforced

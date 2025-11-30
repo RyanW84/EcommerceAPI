@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using ECommerceApp.RyanW84.Data;
 using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
@@ -18,8 +13,8 @@ public class SaleProcessingHelper(ECommerceDbContext db) : ISaleProcessingHelper
 
     public ApiResponseDto<Sale>? ValidateCreateSaleRequest(ApiRequestDto<Sale> request)
     {
-        var payload = request?.Payload;
-        if (payload is null || payload.SaleItems is null || payload.SaleItems.Count == 0)
+        var payload = request.Payload;
+        if (payload is null || payload.SaleItems.Count == 0)
             return ApiResponseDto<Sale>.Failure(
                 HttpStatusCode.BadRequest,
                 "Invalid request or no items provided."

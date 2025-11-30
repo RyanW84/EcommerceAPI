@@ -50,7 +50,6 @@ namespace ECommerceApp.RyanW84.Services
         {
             try
             {
-                parameters ??= new ProductQueryParameters();
                 _productQueryHelper.NormalizePriceRange(parameters);
 
                 PaginatedResponseDto<List<Product>> result =
@@ -75,8 +74,8 @@ namespace ECommerceApp.RyanW84.Services
                 return PaginatedResponseDto<List<Product>>.Failure(
                     HttpStatusCode.InternalServerError,
                     $"Failed to retrieve products: {ex.Message}",
-                    parameters?.Page ?? 1,
-                    parameters?.PageSize ?? 10
+                    parameters.Page,
+                    parameters.PageSize
                 );
             }
         }

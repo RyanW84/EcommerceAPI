@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
 using ECommerceApp.RyanW84.Interfaces.Helpers;
@@ -12,8 +9,7 @@ public class SaleQueryHelper : ISaleQueryHelper
     public void NormalizeDateRange(SaleQueryParameters parameters)
     {
         if (
-            parameters.StartDate.HasValue
-            && parameters.EndDate.HasValue
+            parameters is { StartDate: not null, EndDate: not null }
             && parameters.StartDate > parameters.EndDate
         )
             (parameters.StartDate, parameters.EndDate) = (parameters.EndDate, parameters.StartDate);
@@ -21,7 +17,6 @@ public class SaleQueryHelper : ISaleQueryHelper
 
     public void FilterHistoricalItems(Sale sale)
     {
-        if (sale.SaleItems is null) return;
         DateTime saleDate = sale.SaleDate;
         sale.SaleItems = sale
             .SaleItems.Where(si => si.Product != null && (!si.Product.IsDeleted || si.Product.DeletedAt > saleDate))

@@ -18,12 +18,12 @@ public class SalesSummaryService(ECommerceDbContext db) : ISalesSummaryService
             .Sales.AsNoTracking()
             .Include(s => s.SaleItems)
                 .ThenInclude(si => si.Product!)
-                    .ThenInclude(p => p!.Category)
+                    .ThenInclude(p => p.Category)
             .ToListAsync(cancellationToken);
 
         return salesData
             .SelectMany(s => s.SaleItems, (sale, item) => new { Sale = sale, Item = item })
-            .Where(x => x.Item.Product != null && x.Item.Product.Category != null)
+            .Where(x => x.Item.Product is { Category: not null })
             .GroupBy(x => new
             {
                 ProductName = x.Item.Product!.Name,

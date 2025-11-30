@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using ECommerceApp.RyanW84.Data;
 using ECommerceApp.RyanW84.Data.DTO;
@@ -88,8 +87,6 @@ public class SaleRepository(ECommerceDbContext db) : ISaleRepository
         CancellationToken cancellationToken = default
     )
     {
-        parameters ??= new SaleQueryParameters();
-
         var page = Math.Max(parameters.Page, 1);
         var pageSize = Math.Clamp(parameters.PageSize, 1, 100);
 
@@ -331,10 +328,7 @@ public class SaleRepository(ECommerceDbContext db) : ISaleRepository
         {
             Sale? sale = await GetSaleWithHistoricalProducts(id, cancellationToken);
 
-            if (sale != null && sale.SaleItems != null)
-            {
-                sale.SaleItems = FilterHistoricalSaleItems(sale.SaleItems, sale.SaleDate);
-            }
+            sale?.SaleItems = FilterHistoricalSaleItems(sale.SaleItems, sale.SaleDate);
 
             return new ApiResponseDto<Sale?>
             {
@@ -419,7 +413,7 @@ public class SaleRepository(ECommerceDbContext db) : ISaleRepository
     {
         foreach (Sale sale in sales)
         {
-            if (sale.SaleItems != null)
+            if (true)
             {
                 sale.SaleItems = FilterHistoricalSaleItems(sale.SaleItems, sale.SaleDate);
             }

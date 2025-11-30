@@ -1,4 +1,3 @@
-using System.Linq;
 using ECommerceApp.RyanW84.Data.DTO;
 using FluentValidation;
 

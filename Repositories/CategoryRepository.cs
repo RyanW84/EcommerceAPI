@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using ECommerceApp.RyanW84.Data;
 using ECommerceApp.RyanW84.Data.DTO;
@@ -95,7 +94,6 @@ public class CategoryRepository(ECommerceDbContext db) : ICategoryRepository
         CancellationToken cancellationToken = default
     )
     {
-        parameters ??= new CategoryQueryParameters();
         var (page, pageSize) = NormalizePageParameters(parameters);
 
         try

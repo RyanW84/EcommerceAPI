@@ -189,7 +189,7 @@ public class Program
                  ?? Environment.GetEnvironmentVariable("SQLCONNSTR_DefaultConnection");
 
         if (!string.IsNullOrWhiteSpace(cs))
-            return cs!;
+            return cs;
 
         // As a development fallback, allow SQLite so the app can boot without secrets
         // This does NOT ship any credentials and only creates a local file DB.

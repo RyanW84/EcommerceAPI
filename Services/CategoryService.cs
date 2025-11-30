@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
 using ECommerceApp.RyanW84.Interfaces;
@@ -63,8 +59,6 @@ public class CategoryService(ICategoryRepository categoryRepository, ICategoryPr
         CancellationToken cancellationToken = default
     )
     {
-        parameters ??= new CategoryQueryParameters();
-
         PaginatedResponseDto<List<Category>> repoResult =
             await _categoryRepository.GetAllCategoriesAsync(parameters, cancellationToken);
 
@@ -89,7 +83,7 @@ public class CategoryService(ICategoryRepository categoryRepository, ICategoryPr
         CancellationToken cancellationToken = default
     )
     {
-        if (request?.Payload is null)
+        if (request.Payload is null)
             return ApiResponseDto<Category>.Failure(
                 HttpStatusCode.BadRequest,
                 "Request payload is required."
@@ -99,7 +93,7 @@ public class CategoryService(ICategoryRepository categoryRepository, ICategoryPr
             id,
             cancellationToken
         );
-        if (repoResult?.Data is null)
+        if (repoResult.Data is null)
             return ApiResponseDto<Category>.Failure(
                 HttpStatusCode.NotFound,
                 $"Category with id {id} not found."
@@ -142,7 +136,7 @@ public class CategoryService(ICategoryRepository categoryRepository, ICategoryPr
             id,
             cancellationToken
         );
-        if (repoResult?.Data is null)
+        if (repoResult.Data is null)
             return ApiResponseDto<bool>.Failure(
                 HttpStatusCode.NotFound,
                 $"Category with id {id} not found."

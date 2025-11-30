@@ -9,7 +9,7 @@ public class ProductProcessingHelper : IProductProcessingHelper
 {
     public ApiResponseDto<Product>? ValidateCreateRequest(ApiRequestDto<Product> request)
     {
-        if (request?.Payload is null)
+        if (request.Payload is null)
             return ApiResponseDto<Product>.Failure(HttpStatusCode.BadRequest, "Product data is required");
 
         return null;
@@ -22,7 +22,7 @@ public class ProductProcessingHelper : IProductProcessingHelper
         {
             ProductId = id,
             Name = string.IsNullOrWhiteSpace(incoming.Name) ? existing.Name : incoming.Name.Trim(),
-            Description = string.IsNullOrWhiteSpace(incoming.Description) ? existing.Description : incoming.Description!.Trim(),
+            Description = string.IsNullOrWhiteSpace(incoming.Description) ? existing.Description : incoming.Description.Trim(),
             Price = existing.Price, // preserve existing price per business rule in original code
             Stock = incoming.Stock == 0 ? existing.Stock : incoming.Stock,
             CategoryId = incoming.CategoryId == 0 ? existing.CategoryId : incoming.CategoryId,
