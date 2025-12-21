@@ -1,5 +1,9 @@
+using System;
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
+using Spectre.Console;
 
 namespace ECommerceApp.ConsoleClient.Utilities;
 
@@ -26,24 +30,27 @@ public static class ApiClient
                 AnsiConsole.Write(new Rule($"[bold]HTTP {req.Method}[/] {req.RequestUri}"));
                 AnsiConsole.MarkupLine($"Status: [bold]{header}[/]  Content-Type: [italic]{ct}[/]");
 
+                var truncatedBody = ConsoleInputHelper.Truncate(body, 8000);
+                var escapedBody = Markup.Escape(truncatedBody);
+
                 if (ConsoleInputHelper.IsJson(ct, body))
                 {
                     try
                     {
-                        AnsiConsole.Write(new Panel(ConsoleInputHelper.Truncate(body, 8000))
+                        AnsiConsole.Write(new Panel(escapedBody)
                             .Header("Response")
                             .Expand());
                     }
                     catch
                     {
-                        AnsiConsole.Write(new Panel(ConsoleInputHelper.Truncate(body, 8000))
+                        AnsiConsole.Write(new Panel(escapedBody)
                             .Header("Response")
                             .Expand());
                     }
                 }
                 else
                 {
-                    AnsiConsole.Write(new Panel(ConsoleInputHelper.Truncate(body, 8000))
+                    AnsiConsole.Write(new Panel(escapedBody)
                         .Header("Response")
                         .Expand());
                 }
@@ -75,6 +82,38 @@ public static class ApiClient
         var json = await getRes.Content.ReadAsStringAsync();
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         return JsonSerializer.Deserialize<ApiResponse<T>>(json, options);
+    }
+
+    /// <summary>
+    /// Fetches a paginated list and deserializes it.
+    /// </summary>
+    public static async Task<PaginatedResponse<T>?> FetchPaginatedAsync<T>(HttpClient http, string path)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, path);
+        using var res = await http.SendAsync(req);
+        if (!res.IsSuccessStatusCode)
+        {
+            ConsoleInputHelper.DisplayError($"Failed to fetch data: {res.StatusCode}");
+            return null;
+        }
+
+        var json = await res.Content.ReadAsStringAsync();
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        return JsonSerializer.Deserialize<PaginatedResponse<T>>(json, options);
+    }
+
+    /// <summary>
+    /// Paginated response wrapper for deserialization.
+    /// </summary>
+    public sealed record PaginatedResponse<T>
+    {
+        public bool RequestFailed { get; init; }
+        public HttpStatusCode ResponseCode { get; init; }
+        public string ErrorMessage { get; init; } = string.Empty;
+        public List<T>? Data { get; init; }
+        public int CurrentPage { get; init; }
+        public int PageSize { get; init; }
+        public int TotalCount { get; init; }
     }
 
     /// <summary>

@@ -4,6 +4,7 @@ using System.Text.Json;
 using ECommerceApp.ConsoleClient;
 using ECommerceApp.ConsoleClient.Handlers;
 using ECommerceApp.ConsoleClient.Helpers;
+using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 
@@ -24,42 +25,54 @@ public static class Program
         AnsiConsole.Write(new FigletText("ECommerce API").Color(Color.Green));
 
         var settings = new ClientSettings { BaseUrl = ResolveBaseUrl(args) };
-        using var http = CreateHttpClient(settings.BaseUrl);
+        var http = CreateHttpClient(settings.BaseUrl);
 
-        // Initialize handlers following Dependency Injection pattern
-        var handlers = new Dictionary<string, IConsoleMenuHandler>
+        try
         {
-            { "Products", new ProductMenuHandler() },
-            { "Categories", new CategoryMenuHandler() },
-            { "Sales", new SalesMenuHandler() }
-        };
-
-        while (true)
-        {
-            var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title($"[yellow]Base URL:[/] [blue]{settings.BaseUrl}[/]\nSelect an option:")
-                .PageSize(10)
-                .AddChoices(handlers.Keys.Concat(new[] { "Custom Request", "Settings", "Exit" }).ToList()));
-
-            if (handlers.TryGetValue(choice, out var handler))
+            // Initialize handlers following Dependency Injection pattern
+            var handlers = new Dictionary<string, IConsoleMenuHandler>
             {
-                await handler.ExecuteAsync(http);
-            }
-            else
+                { "Products", new ProductMenuHandler() },
+                { "Categories", new CategoryMenuHandler() },
+                { "Sales", new SalesMenuHandler() }
+            };
+
+            while (true)
             {
-                switch (choice)
+                var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                    .Title($"[yellow]Base URL:[/] [blue]{settings.BaseUrl}[/]\nSelect an option:")
+                    .PageSize(10)
+                    .AddChoices(handlers.Keys.Concat(new[] { "Custom Request", "Settings", "Exit" }).ToList()));
+
+                if (handlers.TryGetValue(choice, out var handler))
                 {
-                    case "Custom Request":
-                        await CustomRequestAsync(http);
-                        break;
-                    case "Settings":
-                        settings.BaseUrl = PromptBaseUrl(settings.BaseUrl);
-                        http.BaseAddress = new Uri(settings.BaseUrl);
-                        break;
-                    case "Exit":
-                        return 0;
+                    await handler.ExecuteAsync(http);
+                }
+                else
+                {
+                    switch (choice)
+                    {
+                        case "Custom Request":
+                            await CustomRequestAsync(http);
+                            break;
+                        case "Settings":
+                            var newUrl = PromptBaseUrl(settings.BaseUrl);
+                            if (newUrl != settings.BaseUrl)
+                            {
+                                settings.BaseUrl = newUrl;
+                                http.Dispose();
+                                http = CreateHttpClient(settings.BaseUrl);
+                            }
+                            break;
+                        case "Exit":
+                            return 0;
+                    }
                 }
             }
+        }
+        finally
+        {
+            http?.Dispose();
         }
     }
 
@@ -96,7 +109,17 @@ public static class Program
 
     private static HttpClient CreateHttpClient(string baseUrl)
     {
-        var http = new HttpClient
+        // For development: ignore SSL certificate validation errors for self-signed certificates
+        var handler = new HttpClientHandler();
+
+        // Always bypass certificate validation for localhost and 127.0.0.1 in development
+        if (baseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+            baseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+        }
+
+        var http = new HttpClient(handler, disposeHandler: true)
         {
             BaseAddress = new Uri(baseUrl),
             Timeout = TimeSpan.FromSeconds(30)

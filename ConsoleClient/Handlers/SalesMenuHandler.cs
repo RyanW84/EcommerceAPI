@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
+using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 

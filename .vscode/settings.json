@@ -30,6 +30,7 @@
         "sqlcmd",
         "SQLCONNSTR",
         "totalamount",
-        "usersecrets"
+        "usersecrets",
+        "xzfv"
     ]
 }

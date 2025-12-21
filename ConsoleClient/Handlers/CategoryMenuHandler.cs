@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
+using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 
@@ -22,14 +23,16 @@ public class CategoryMenuHandler : IConsoleMenuHandler
             { "Get by Name", GetByNameAsync },
             { "Create", CreateAsync },
             { "Update", UpdateAsync },
-            { "Delete", DeleteAsync }
+            { "Delete", DeleteAsync },
         };
 
         while (true)
         {
-            var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title("[green]Categories[/] — Choose an action:")
-                .AddChoices(actions.Keys.Concat(new[] { "Back" }).ToList()));
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[green]Categories[/] — Choose an action:")
+                    .AddChoices(actions.Keys.Concat(new[] { "Back" }).ToList())
+            );
 
             if (choice == "Back")
                 return;
@@ -60,7 +63,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     private static async Task GetByNameAsync(HttpClient http)
     {
         var name = ConsoleInputHelper.PromptRequired("Name");
-        await ApiClient.GetAndRenderAsync(http, $"/api/categories/name/{Uri.EscapeDataString(name)}");
+        await ApiClient.GetAndRenderAsync(
+            http,
+            $"/api/categories/name/{Uri.EscapeDataString(name)}"
+        );
     }
 
     private static async Task CreateAsync(HttpClient http)
@@ -76,7 +82,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     {
         int categoryId = ConsoleInputHelper.PromptPositiveInt("Category ID");
 
-        var categoryResponse = await ApiClient.FetchEntityAsync<CategoryDto>(http, $"/api/categories/{categoryId}");
+        var categoryResponse = await ApiClient.FetchEntityAsync<CategoryDto>(
+            http,
+            $"/api/categories/{categoryId}"
+        );
         if (categoryResponse?.Data == null)
         {
             ConsoleInputHelper.DisplayError("Category not found");
@@ -91,7 +100,12 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var name = PromptOptionalField("Category Name", current.Name);
         var description = PromptOptionalField("Description", current.Description);
 
-        var payload = new { categoryId, name, description };
+        var payload = new
+        {
+            categoryId,
+            name,
+            description,
+        };
         await ApiClient.PutAsync(http, $"/api/categories/{categoryId}", payload);
     }
 
@@ -116,16 +130,16 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
     private static (string SortBy, string? SortDirection) PromptSortOptions(string[] options)
     {
-        var sortBy = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Sort By (optional)")
-            .AddChoices(options));
+        var sortBy = AnsiConsole.Prompt(
+            new SelectionPrompt<string>().Title("Sort By (optional)").AddChoices(options)
+        );
 
         string? sortDirection = null;
         if (sortBy != "(none)")
         {
-            sortDirection = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title("Sort Direction")
-                .AddChoices("asc", "desc"));
+            sortDirection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>().Title("Sort Direction").AddChoices("asc", "desc")
+            );
         }
 
         return (sortBy, sortDirection);

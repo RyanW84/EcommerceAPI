@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
+using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 
@@ -76,7 +77,15 @@ public class ProductMenuHandler : IConsoleMenuHandler
             .Add("sortDirection", query.SortDirection)
             .Build();
 
-        await ApiClient.GetAndRenderAsync(http, $"/api/product{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+        if (response?.Data != null && response.Data.Count > 0)
+        {
+            TableRenderer.DisplayTable(response.Data, $"Products (Page {response.CurrentPage}/{Math.Ceiling((double)response.TotalCount / response.PageSize)})", "CategoryId");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[yellow]No products found[/]");
+        }
     }
 
     private static async Task CreateAsync(HttpClient http)
