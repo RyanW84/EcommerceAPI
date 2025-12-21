@@ -134,7 +134,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
         while (true)
         {
             var addMore = AnsiConsole.Confirm("Add a sale item?");
-            if (!addMore) 
+            if (!addMore)
                 break;
 
             var productId = ConsoleInputHelper.PromptPositiveInt("Product ID");

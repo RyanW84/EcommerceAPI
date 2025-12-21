@@ -83,7 +83,7 @@ public static class Program
         {
             if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase))
             {
-                if (i + 1 < args.Length) 
+                if (i + 1 < args.Length)
                     return args[i + 1];
             }
             else if (args[i].StartsWith(key + "=", StringComparison.OrdinalIgnoreCase))
@@ -121,9 +121,9 @@ public static class Program
         var method = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("HTTP Method")
             .AddChoices("GET", "POST", "PUT", "DELETE"));
-        
+
         var path = ConsoleInputHelper.PromptRequired("Path (e.g., /api/product)");
-        
+
         string? body = null;
         if (method is "POST" or "PUT")
         {

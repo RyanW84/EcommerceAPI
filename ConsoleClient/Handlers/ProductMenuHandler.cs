@@ -48,16 +48,16 @@ public class ProductMenuHandler : IConsoleMenuHandler
         int? categoryId = ConsoleInputHelper.PromptOptionalInt("Category Id");
         var (sortBy, sortDirection) = PromptSortOptions(new[] { "(none)", "name", "price", "stock", "createdat", "category" });
 
-        var query = new ProductListQuery 
-        { 
-            Page = page, 
-            PageSize = pageSize, 
-            Search = search, 
-            MinPrice = minPrice, 
-            MaxPrice = maxPrice, 
-            CategoryId = categoryId, 
-            SortBy = sortBy, 
-            SortDirection = sortDirection 
+        var query = new ProductListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Search = search,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            CategoryId = categoryId,
+            SortBy = sortBy,
+            SortDirection = sortDirection
         };
 
         await BuildAndExecuteListQuery(http, query);
@@ -129,7 +129,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
             price = string.IsNullOrWhiteSpace(priceStr) ? current.Price : decimal.Parse(priceStr),
             stock = string.IsNullOrWhiteSpace(stockStr) ? current.Stock : int.Parse(stockStr),
             categoryId = string.IsNullOrWhiteSpace(categoryIdStr) ? current.CategoryId : int.Parse(categoryIdStr),
-            isActive = string.IsNullOrWhiteSpace(isActiveStr) ? current.IsActive : 
+            isActive = string.IsNullOrWhiteSpace(isActiveStr) ? current.IsActive :
                 isActiveStr.Equals("yes", StringComparison.OrdinalIgnoreCase)
         };
 

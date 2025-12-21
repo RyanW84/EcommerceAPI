@@ -130,11 +130,11 @@ public static class ConsoleInputHelper
     /// </summary>
     public static bool IsJson(string contentType, string body)
     {
-        if (!string.IsNullOrWhiteSpace(contentType) && 
+        if (!string.IsNullOrWhiteSpace(contentType) &&
             contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (string.IsNullOrWhiteSpace(body)) 
+        if (string.IsNullOrWhiteSpace(body))
             return false;
 
         var t = body.TrimStart();
