@@ -58,181 +58,50 @@ public static class DatabaseSeeder
 
     private static List<Product> SeedProducts(ECommerceDbContext context, List<Category> categories)
     {
+        var products = GetProductSeedData(categories);
+        context.Products.AddRange(products);
+        context.SaveChanges();
+        return products.ToList();
+    }
+
+    private static Product[] GetProductSeedData(List<Category> categories)
+    {
         var electronics = categories[0];
         var clothing = categories[1];
         var books = categories[2];
         var homeAndGarden = categories[3];
         var sports = categories[4];
 
-        var products = new[]
+        return new[]
         {
-            new Product
-            {
-                Name = "Laptop",
-                Description = "High-performance laptop",
-                Price = 999.99m,
-                Stock = 10,
-                IsActive = true,
-                CategoryId = electronics.CategoryId,
-            },
-            new Product
-            {
-                Name = "Mouse",
-                Description = "Wireless mouse",
-                Price = 29.99m,
-                Stock = 50,
-                IsActive = true,
-                CategoryId = electronics.CategoryId,
-            },
-            new Product
-            {
-                Name = "Keyboard",
-                Description = "Mechanical keyboard",
-                Price = 79.99m,
-                Stock = 30,
-                IsActive = true,
-                CategoryId = electronics.CategoryId,
-            },
-            new Product
-            {
-                Name = "Monitor",
-                Description = "27-inch 4K monitor",
-                Price = 399.99m,
-                Stock = 15,
-                IsActive = true,
-                CategoryId = electronics.CategoryId,
-            },
-            new Product
-            {
-                Name = "T-Shirt",
-                Description = "Cotton t-shirt",
-                Price = 19.99m,
-                Stock = 100,
-                IsActive = true,
-                CategoryId = clothing.CategoryId,
-            },
-            new Product
-            {
-                Name = "Jeans",
-                Description = "Classic blue jeans",
-                Price = 49.99m,
-                Stock = 80,
-                IsActive = true,
-                CategoryId = clothing.CategoryId,
-            },
-            new Product
-            {
-                Name = "Jacket",
-                Description = "Winter jacket",
-                Price = 89.99m,
-                Stock = 25,
-                IsActive = true,
-                CategoryId = clothing.CategoryId,
-            },
-            new Product
-            {
-                Name = "C# Programming",
-                Description = "Advanced C# guide",
-                Price = 39.99m,
-                Stock = 40,
-                IsActive = true,
-                CategoryId = books.CategoryId,
-            },
-            new Product
-            {
-                Name = "Design Patterns",
-                Description = "GOF design patterns",
-                Price = 44.99m,
-                Stock = 35,
-                IsActive = true,
-                CategoryId = books.CategoryId,
-            },
-            new Product
-            {
-                Name = "Clean Code",
-                Description = "Writing clean code",
-                Price = 34.99m,
-                Stock = 50,
-                IsActive = true,
-                CategoryId = books.CategoryId,
-            },
-            new Product
-            {
-                Name = "Garden Hose",
-                Description = "50ft expandable hose",
-                Price = 34.99m,
-                Stock = 20,
-                IsActive = true,
-                CategoryId = homeAndGarden.CategoryId,
-            },
-            new Product
-            {
-                Name = "Lawn Mower",
-                Description = "Electric lawn mower",
-                Price = 249.99m,
-                Stock = 8,
-                IsActive = true,
-                CategoryId = homeAndGarden.CategoryId,
-            },
-            new Product
-            {
-                Name = "Paint Set",
-                Description = "Interior paint set",
-                Price = 79.99m,
-                Stock = 15,
-                IsActive = true,
-                CategoryId = homeAndGarden.CategoryId,
-            },
-            new Product
-            {
-                Name = "Tool Set",
-                Description = "150-piece tool set",
-                Price = 89.99m,
-                Stock = 12,
-                IsActive = true,
-                CategoryId = homeAndGarden.CategoryId,
-            },
-            new Product
-            {
-                Name = "Basketball",
-                Description = "Official size basketball",
-                Price = 29.99m,
-                Stock = 25,
-                IsActive = true,
-                CategoryId = sports.CategoryId,
-            },
-            new Product
-            {
-                Name = "Yoga Mat",
-                Description = "Non-slip yoga mat",
-                Price = 24.99m,
-                Stock = 40,
-                IsActive = true,
-                CategoryId = sports.CategoryId,
-            },
-            new Product
-            {
-                Name = "Running Shoes",
-                Description = "Professional running shoes",
-                Price = 119.99m,
-                Stock = 30,
-                IsActive = true,
-                CategoryId = sports.CategoryId,
-            },
-            new Product
-            {
-                Name = "Tennis Racket",
-                Description = "Carbon fiber racket",
-                Price = 149.99m,
-                Stock = 10,
-                IsActive = true,
-                CategoryId = sports.CategoryId,
-            },
+            // Electronics
+            new Product { Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Stock = 10, IsActive = true, CategoryId = electronics.CategoryId },
+            new Product { Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Stock = 50, IsActive = true, CategoryId = electronics.CategoryId },
+            new Product { Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Stock = 30, IsActive = true, CategoryId = electronics.CategoryId },
+            new Product { Name = "Monitor", Description = "27-inch 4K monitor", Price = 399.99m, Stock = 15, IsActive = true, CategoryId = electronics.CategoryId },
+            
+            // Clothing
+            new Product { Name = "T-Shirt", Description = "Cotton t-shirt", Price = 19.99m, Stock = 100, IsActive = true, CategoryId = clothing.CategoryId },
+            new Product { Name = "Jeans", Description = "Classic blue jeans", Price = 49.99m, Stock = 80, IsActive = true, CategoryId = clothing.CategoryId },
+            new Product { Name = "Jacket", Description = "Winter jacket", Price = 89.99m, Stock = 25, IsActive = true, CategoryId = clothing.CategoryId },
+            
+            // Books
+            new Product { Name = "C# Programming", Description = "Advanced C# guide", Price = 39.99m, Stock = 40, IsActive = true, CategoryId = books.CategoryId },
+            new Product { Name = "Design Patterns", Description = "GOF design patterns", Price = 44.99m, Stock = 35, IsActive = true, CategoryId = books.CategoryId },
+            new Product { Name = "Clean Code", Description = "Writing clean code", Price = 34.99m, Stock = 50, IsActive = true, CategoryId = books.CategoryId },
+            
+            // Home & Garden
+            new Product { Name = "Garden Hose", Description = "50ft expandable hose", Price = 34.99m, Stock = 20, IsActive = true, CategoryId = homeAndGarden.CategoryId },
+            new Product { Name = "Lawn Mower", Description = "Electric lawn mower", Price = 249.99m, Stock = 8, IsActive = true, CategoryId = homeAndGarden.CategoryId },
+            new Product { Name = "Paint Set", Description = "Interior paint set", Price = 79.99m, Stock = 15, IsActive = true, CategoryId = homeAndGarden.CategoryId },
+            new Product { Name = "Tool Set", Description = "150-piece tool set", Price = 89.99m, Stock = 12, IsActive = true, CategoryId = homeAndGarden.CategoryId },
+            
+            // Sports
+            new Product { Name = "Basketball", Description = "Official size basketball", Price = 29.99m, Stock = 25, IsActive = true, CategoryId = sports.CategoryId },
+            new Product { Name = "Yoga Mat", Description = "Non-slip yoga mat", Price = 24.99m, Stock = 40, IsActive = true, CategoryId = sports.CategoryId },
+            new Product { Name = "Running Shoes", Description = "Professional running shoes", Price = 119.99m, Stock = 30, IsActive = true, CategoryId = sports.CategoryId },
+            new Product { Name = "Tennis Racket", Description = "Carbon fiber racket", Price = 149.99m, Stock = 10, IsActive = true, CategoryId = sports.CategoryId },
         };
-
-        context.Products.AddRange(products);
-        context.SaveChanges();
-        return products.ToList();
     }
 
     private static void SeedSales(ECommerceDbContext context, List<Product> products)

@@ -56,3 +56,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+
+.fake

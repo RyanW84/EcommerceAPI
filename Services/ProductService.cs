@@ -6,6 +6,11 @@ using ECommerceApp.RyanW84.Interfaces.Helpers;
 
 namespace ECommerceApp.RyanW84.Services
 {
+    /// <summary>
+    /// Service layer for managing product operations.
+    /// Handles product creation, retrieval, updates, and deletion.
+    /// Delegates validation to helpers and persistence to repositories.
+    /// </summary>
     public class ProductService(
         IProductRepository productRepository,
         IProductProcessingHelper productProcessingHelper,
@@ -16,6 +21,12 @@ namespace ECommerceApp.RyanW84.Services
         private readonly IProductProcessingHelper _productProcessingHelper = productProcessingHelper;
         private readonly IProductQueryHelper _productQueryHelper = productQueryHelper;
 
+        /// <summary>
+        /// Creates a new product in the database.
+        /// </summary>
+        /// <param name="request">The product creation request</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Created product or error response</returns>
         public async Task<ApiResponseDto<Product>> CreateProductAsync(
             ApiRequestDto<Product> request,
             CancellationToken cancellationToken = default

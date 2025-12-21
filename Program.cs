@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using Serilog;
 using ECommerceApp.RyanW84.Options;
 
 namespace ECommerceApp.RyanW84;
@@ -19,11 +20,37 @@ public class Program
     // Entry point of the application
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
-        ConfigureServices(builder);
-        var app = builder.Build();
-        ConfigureMiddlewareAndRoutes(app);
-        app.Run();
+        // Configure Serilog before building the app
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console()
+            .WriteTo.File(
+                Path.Combine(AppContext.BaseDirectory, "logs", "ecommerce-.log"),
+                rollingInterval: RollingInterval.Day,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+            )
+            .Enrich.WithProperty("Application", "ECommerceAPI")
+            .CreateLogger();
+
+        try
+        {
+            Log.Information("Starting ECommerceAPI application");
+            var builder = WebApplication.CreateBuilder(args);
+            builder.Host.UseSerilog();
+
+            ConfigureServices(builder);
+            var app = builder.Build();
+            ConfigureMiddlewareAndRoutes(app);
+            app.Run();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Application terminated unexpectedly");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
 
     private static void ConfigureServices(WebApplicationBuilder builder)

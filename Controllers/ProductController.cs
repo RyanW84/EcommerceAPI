@@ -5,13 +5,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceApp.RyanW84.Controllers;
 
+/// <summary>
+/// API controller for managing products.
+/// Provides CRUD operations and product queries with pagination support.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class ProductController(IProductService productService) : ControllerBase
 {
     private readonly IProductService _productService = productService;
 
-    // GET /api/products
+    /// <summary>
+    /// Retrieves all products with optional filtering and pagination.
+    /// </summary>
+    /// <param name="queryParameters">Query parameters for filtering and pagination</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Paginated list of products</returns>
     [HttpGet]
     [ResponseCache(Duration = 30, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "*" })]
     public async Task<IActionResult> GetProductsAsync(
@@ -31,7 +40,12 @@ public class ProductController(IProductService productService) : ControllerBase
         return Ok(result);
     }
 
-    // GET /api/products/{id}
+    /// <summary>
+    /// Retrieves a specific product by its ID.
+    /// </summary>
+    /// <param name="id">The product ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The requested product or 404 Not Found</returns>
     [HttpGet("{id:int}")]
     [ResponseCache(Duration = 120, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetProductById(

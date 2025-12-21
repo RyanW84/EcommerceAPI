@@ -6,11 +6,22 @@ using ECommerceApp.RyanW84.Interfaces.Helpers;
 
 namespace ECommerceApp.RyanW84.Services;
 
+/// <summary>
+/// Service layer for managing category operations.
+/// Handles category creation, retrieval, updates, deletion, and restoration.
+/// Ensures data consistency and validates business rules.
+/// </summary>
 public class CategoryService(ICategoryRepository categoryRepository, ICategoryProcessingHelper categoryProcessingHelper) : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepository = categoryRepository;
     private readonly ICategoryProcessingHelper _categoryProcessingHelper = categoryProcessingHelper;
 
+    /// <summary>
+    /// Creates a new category.
+    /// </summary>
+    /// <param name="request">The category creation request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Created category or error response with conflict status if duplicate name</returns>
     public async Task<ApiResponseDto<Category>> CreateCategoryAsync(
         ApiRequestDto<Category> request,
         CancellationToken cancellationToken = default
@@ -83,48 +94,61 @@ public class CategoryService(ICategoryRepository categoryRepository, ICategoryPr
         CancellationToken cancellationToken = default
     )
     {
-        if (request.Payload is null)
-            return ApiResponseDto<Category>.Failure(
-                HttpStatusCode.BadRequest,
-                "Request payload is required."
-            );
+        var validation = ValidateUpdateRequest(request);
+        if (validation != null) return validation;
 
-        ApiResponseDto<Category?> repoResult = await _categoryRepository.GetByIdAsync(
-            id,
-            cancellationToken
-        );
-        if (repoResult.Data is null)
+        var existing = await GetExistingCategoryAsync(id, cancellationToken);
+        if (existing == null)
             return ApiResponseDto<Category>.Failure(
                 HttpStatusCode.NotFound,
                 $"Category with id {id} not found."
             );
 
-        var existing = repoResult.Data!;
-        var newName = string.IsNullOrWhiteSpace(request.Payload.Name)
-            ? existing.Name
-            : request.Payload.Name.Trim();
+        var nameValidation = await ValidateCategoryNameAsync(request.Payload!, existing, cancellationToken);
+        if (nameValidation != null) return nameValidation;
 
-        if (!string.Equals(newName, existing.Name, StringComparison.OrdinalIgnoreCase))
-        {
-            var byName = await _categoryRepository.GetByNameAsync(newName, cancellationToken);
-            var nameExists =
-                !byName.RequestFailed && byName.Data?.CategoryId != existing.CategoryId;
-            if (nameExists)
-                return ApiResponseDto<Category>.Failure(
-                    HttpStatusCode.Conflict,
-                    $"Category with name '{newName}' already exists."
-                );
-        }
+        var updatedCategory = _categoryProcessingHelper.PrepareForUpdate(existing, request.Payload!, id);
+        var updateResult = await _categoryRepository.UpdateAsync(updatedCategory, cancellationToken);
 
-        var updatedCategory = _categoryProcessingHelper.PrepareForUpdate(existing, request.Payload, id);
-
-        var updateResult = await _categoryRepository.UpdateAsync(
-            updatedCategory,
-            cancellationToken
-        );
         return updateResult.RequestFailed
             ? updateResult
             : ApiResponseDto<Category>.Success(updateResult.Data);
+    }
+
+    private ApiResponseDto<Category>? ValidateUpdateRequest(ApiRequestDto<Category> request)
+    {
+        if (request.Payload is null)
+            return ApiResponseDto<Category>.Failure(
+                HttpStatusCode.BadRequest,
+                "Request payload is required."
+            );
+        return null;
+    }
+
+    private async Task<Category?> GetExistingCategoryAsync(int id, CancellationToken cancellationToken)
+    {
+        var result = await _categoryRepository.GetByIdAsync(id, cancellationToken);
+        return result.Data;
+    }
+
+    private async Task<ApiResponseDto<Category>?> ValidateCategoryNameAsync(
+        Category incoming, Category existing, CancellationToken cancellationToken)
+    {
+        var newName = string.IsNullOrWhiteSpace(incoming.Name) ? existing.Name : incoming.Name.Trim();
+
+        if (string.Equals(newName, existing.Name, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var byName = await _categoryRepository.GetByNameAsync(newName, cancellationToken);
+        var nameExists = !byName.RequestFailed && byName.Data?.CategoryId != existing.CategoryId;
+
+        if (nameExists)
+            return ApiResponseDto<Category>.Failure(
+                HttpStatusCode.Conflict,
+                $"Category with name '{newName}' already exists."
+            );
+
+        return null;
     }
 
     public async Task<ApiResponseDto<bool>> DeleteCategoryAsync(
