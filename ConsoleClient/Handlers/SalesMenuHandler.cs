@@ -166,7 +166,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
@@ -179,7 +179,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 
@@ -217,7 +217,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
@@ -230,7 +230,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 
@@ -256,7 +256,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
                 break;
 
             // Show list of products to select from
-            var productsResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, "/api/product?page=1&pageSize=100");
+            var productsResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, "/api/product?page=1&pageSize=32");
             if (productsResponse?.Data == null || productsResponse.Data.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No products available[/]");

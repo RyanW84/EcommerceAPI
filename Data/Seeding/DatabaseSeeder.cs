@@ -106,7 +106,7 @@ public static class DatabaseSeeder
                 products.Add(new Product
                 {
                     Name = $"{productNames[productIndex % productNames.Length]} {(productIndex / productNames.Length) + 1}",
-                    Description = $"{descriptions[random.Next(descriptions.Length)]} - Category: {category.Name}",
+                    Description = descriptions[random.Next(descriptions.Length)],
                     Price = Math.Round((decimal)(10 + random.Next(0, 500) + random.NextDouble()), 2),
                     Stock = random.Next(5, 200),
                     IsActive = true,
@@ -122,7 +122,7 @@ public static class DatabaseSeeder
             products.Add(new Product
             {
                 Name = $"{productNames[productIndex % productNames.Length]} {(productIndex / productNames.Length) + 1}",
-                Description = $"{descriptions[random.Next(descriptions.Length)]} - General Product",
+                Description = descriptions[random.Next(descriptions.Length)],
                 Price = Math.Round((decimal)(10 + random.Next(0, 500) + random.NextDouble()), 2),
                 Stock = random.Next(5, 200),
                 IsActive = true,

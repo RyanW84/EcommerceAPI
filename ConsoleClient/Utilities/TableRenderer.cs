@@ -74,6 +74,7 @@ public static class TableRenderer
     /// <summary>
     /// Creates a selection prompt that shows index and item name together.
     /// More user-friendly than selecting by number alone.
+    /// Supports pagination for lists with more than 32 items.
     /// </summary>
     public static T? SelectFromPrompt<T>(
         IList<T> items,
@@ -93,33 +94,74 @@ public static class TableRenderer
         var nameProp = properties.FirstOrDefault(p =>
             p.Name.Equals(nameProperty, StringComparison.OrdinalIgnoreCase));
 
-        var choices = new List<string>();
-        for (int i = 0; i < items.Count; i++)
+        const int pageSize = 32;
+        int currentPage = 0;
+        int totalPages = (items.Count + pageSize - 1) / pageSize;
+
+        while (true)
         {
-            var index = indexOffset + i + 1;
-            var nameValue = nameProp?.GetValue(items[i])?.ToString() ?? "Unknown";
-            choices.Add($"{index} - {nameValue}");
-        }
-        choices.Add("Cancel");
+            // Calculate range for current page
+            int startIndex = currentPage * pageSize;
+            int endIndex = Math.Min(startIndex + pageSize, items.Count);
+            int itemsOnThisPage = endIndex - startIndex;
 
-        var choice = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title($"[green]{title}[/]")
-                .PageSize(10)
-                .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
-                .AddChoices(choices)
-        );
+            var choices = new List<string>();
 
-        if (choice == "Cancel")
+            // Add items for this page
+            for (int i = startIndex; i < endIndex; i++)
+            {
+                var index = indexOffset + i + 1;
+                var nameValue = nameProp?.GetValue(items[i])?.ToString() ?? "Unknown";
+                choices.Add($"{index} - {nameValue}");
+            }
+
+            // Add navigation options if multiple pages
+            if (totalPages > 1)
+            {
+                choices.Add("---");
+                if (currentPage > 0)
+                    choices.Add("< Previous Page");
+                if (currentPage < totalPages - 1)
+                    choices.Add("Next Page >");
+                choices.Add("Cancel");
+            }
+            else
+            {
+                choices.Add("Cancel");
+            }
+
+            string pageIndicator = totalPages > 1 ? $" (Page {currentPage + 1}/{totalPages})" : "";
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title($"[green]{title}{pageIndicator}[/]")
+                    .PageSize(Math.Min(40, choices.Count))
+                    .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
+                    .AddChoices(choices)
+            );
+
+            if (choice == "Cancel" || choice == "---")
+                return null;
+
+            if (choice == "< Previous Page")
+            {
+                currentPage--;
+                continue;
+            }
+
+            if (choice == "Next Page >")
+            {
+                currentPage++;
+                continue;
+            }
+
+            // Extract the index from the choice string (e.g., "1 - Product Name" -> 1)
+            if (int.TryParse(choice.Split('-')[0].Trim(), out int selectedIndex))
+            {
+                return items[selectedIndex - indexOffset - 1];
+            }
+
             return null;
-
-        // Extract the index from the choice string (e.g., "1 - Product Name" -> 1)
-        if (int.TryParse(choice.Split('-')[0].Trim(), out int selectedIndex))
-        {
-            return items[selectedIndex - indexOffset - 1];
         }
-
-        return null;
     }
 
     /// <summary>
@@ -159,14 +201,20 @@ public static class TableRenderer
 
     /// <summary>
     /// Gets properties suitable for display, excluding specified columns and internal fields.
+    /// Automatically excludes ID columns (anything ending with "Id").
+    /// Returns properties in the desired display order: Name, Description, Price, Stock, IsActive.
     /// </summary>
     private static List<PropertyInfo> GetDisplayProperties<T>(string[] excludeColumns)
         where T : class
     {
-        var props = typeof(T)
+        var desiredOrder = new[] { "Name", "Description", "Price", "Stock", "IsActive", "CustomerName", "SaleDate", "TotalAmount", "CustomerEmail", "CustomerAddress" };
+
+        var allProps = typeof(T)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p =>
-                p.CanRead && !excludeColumns.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
+                p.CanRead
+                && !excludeColumns.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
+                && !p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase)
             )
             .Where(p =>
                 p.PropertyType.IsPrimitive
@@ -175,8 +223,22 @@ public static class TableRenderer
                 || p.PropertyType == typeof(DateTime)
                 || p.PropertyType == typeof(DateTime?)
             )
-            .OrderBy(p => p.Name)
             .ToList();
+
+        // Sort by desired order, then add any remaining properties alphabetically
+        var props = new List<PropertyInfo>();
+        foreach (var propName in desiredOrder)
+        {
+            var prop = allProps.FirstOrDefault(p => p.Name.Equals(propName, StringComparison.OrdinalIgnoreCase));
+            if (prop != null)
+            {
+                props.Add(prop);
+                allProps.Remove(prop);
+            }
+        }
+
+        // Add any remaining properties in alphabetical order
+        props.AddRange(allProps.OrderBy(p => p.Name));
 
         return props;
     }

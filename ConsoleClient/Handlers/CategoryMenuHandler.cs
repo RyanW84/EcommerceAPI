@@ -134,7 +134,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
@@ -186,7 +186,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
@@ -199,7 +199,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 
@@ -236,7 +236,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
@@ -249,7 +249,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 

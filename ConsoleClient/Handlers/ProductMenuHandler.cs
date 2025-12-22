@@ -44,7 +44,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
     private static async Task GetByIdAsync(HttpClient http)
     {
         // First, show a list for the user to select from
-        var (page, pageSize) = (1, 50);
+        var (page, pageSize) = (1, 32);
         var qs = new QueryStringBuilder()
             .Add("page", page.ToString())
             .Add("pageSize", pageSize.ToString())
@@ -204,7 +204,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
     private static async Task CreateAsync(HttpClient http)
     {
         // Show list of categories to select from
-        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=100");
+        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
         if (categoriesResponse?.Data == null || categoriesResponse.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available. Please create a category first.[/]");
@@ -252,7 +252,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 
@@ -276,7 +276,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var stockStr = AnsiConsole.Ask<string>("Stock (leave blank to keep):", string.Empty);
 
         // Show category selection list instead of ID prompt
-        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=100");
+        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
         int categoryId = current.CategoryId;
         if (categoriesResponse?.Data != null && categoriesResponse.Data.Count > 0)
         {
@@ -312,7 +312,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
         // Show list for selection
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
@@ -325,7 +325,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var pagination = new PaginationState
         {
             CurrentPage = 1,
-            PageSize = 50,
+            PageSize = 32,
             TotalCount = response.TotalCount
         };
 
