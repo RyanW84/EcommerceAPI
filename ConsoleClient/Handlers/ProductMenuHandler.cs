@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
 using ECommerceApp.ConsoleClient.Interfaces;
+using ECommerceApp.ConsoleClient.Models;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 
@@ -19,8 +20,8 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var actions = new Dictionary<string, Func<HttpClient, Task>>
         {
             { "List", ListAsync },
-            { "Get by Id", h => ApiClient.GetByIdAsync(h, "/api/product/{id}", "Product") },
-            { "By Category", h => ApiClient.GetByIdAsync(h, "/api/product/category/{id}", "CategoryId") },
+            { "Get by Id", GetByIdAsync },
+            { "By Category", GetByCategoryAsync },
             { "Create", CreateAsync },
             { "Update", UpdateAsync },
             { "Delete", DeleteAsync }
@@ -40,18 +41,87 @@ public class ProductMenuHandler : IConsoleMenuHandler
         }
     }
 
+    private static async Task GetByIdAsync(HttpClient http)
+    {
+        // First, show a list for the user to select from
+        var (page, pageSize) = (1, 20);
+        var qs = new QueryStringBuilder()
+            .Add("page", page.ToString())
+            .Add("pageSize", pageSize.ToString())
+            .Build();
+
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+        if (response?.Data == null || response.Data.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No products available[/]");
+            return;
+        }
+
+        var pagination = new PaginationState
+        {
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = response.TotalCount
+        };
+
+        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product", pagination.IndexOffset, "CategoryId");
+        if (selected != null)
+        {
+            var detailResponse = await ApiClient.FetchEntityAsync<ProductDto>(http, $"/api/product/{selected.ProductId}");
+            if (detailResponse?.Data != null)
+            {
+                TableRenderer.DisplayTable(new[] { detailResponse.Data }.ToList(), "Product Details", 0, "CategoryId");
+            }
+        }
+    }
+
+    private static async Task GetByCategoryAsync(HttpClient http)
+    {
+        int categoryId = ConsoleInputHelper.PromptPositiveInt("Category ID");
+        var qs = new QueryStringBuilder()
+            .Add("page", "1")
+            .Add("pageSize", "50")
+            .Build();
+
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product/category/{categoryId}{qs}");
+        if (response?.Data != null && response.Data.Count > 0)
+        {
+            TableRenderer.DisplayTable(response.Data, $"Products in Category {categoryId}", 0, "CategoryId");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[yellow]No products found in this category[/]");
+        }
+    }
+
     private static async Task ListAsync(HttpClient http)
     {
-        var (page, pageSize) = ConsoleInputHelper.PromptPagination();
-        string? search = ConsoleInputHelper.PromptOptional("Search");
-        decimal? minPrice = ConsoleInputHelper.PromptOptionalDecimal("Min Price");
-        decimal? maxPrice = ConsoleInputHelper.PromptOptionalDecimal("Max Price");
-        int? categoryId = ConsoleInputHelper.PromptOptionalInt("Category Id");
-        var (sortBy, sortDirection) = PromptSortOptions(new[] { "(none)", "name", "price", "stock", "createdat", "category" });
+        var pageSize = ConsoleInputHelper.PromptPositiveInt("Items per page");
+
+        // Ask if user wants to apply filters
+        var applyFilters = AnsiConsole.Confirm("Apply filters?", false);
+
+        string? search = null;
+        decimal? minPrice = null;
+        decimal? maxPrice = null;
+        int? categoryId = null;
+        string? sortBy = null;
+        string? sortDirection = null;
+
+        if (applyFilters)
+        {
+            search = ConsoleInputHelper.PromptOptional("Search");
+            minPrice = ConsoleInputHelper.PromptOptionalDecimal("Min Price");
+            maxPrice = ConsoleInputHelper.PromptOptionalDecimal("Max Price");
+            categoryId = ConsoleInputHelper.PromptOptionalInt("Category Id");
+            var (sortByResult, sortDirectionResult) = PromptSortOptions(new[] { "(none)", "name", "price", "stock", "createdat", "category" });
+            sortBy = sortByResult;
+            sortDirection = sortDirectionResult;
+        }
 
         var query = new ProductListQuery
         {
-            Page = page,
+            Page = 1,
             PageSize = pageSize,
             Search = search,
             MinPrice = minPrice,
@@ -61,30 +131,66 @@ public class ProductMenuHandler : IConsoleMenuHandler
             SortDirection = sortDirection
         };
 
-        await BuildAndExecuteListQuery(http, query);
+        await BuildAndExecuteListQueryWithPagination(http, query);
     }
 
-    private static async Task BuildAndExecuteListQuery(HttpClient http, ProductListQuery query)
+    private static async Task BuildAndExecuteListQueryWithPagination(HttpClient http, ProductListQuery query)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", query.Page.ToString())
-            .Add("pageSize", query.PageSize.ToString())
-            .Add("search", query.Search)
-            .Add("minPrice", query.MinPrice?.ToString())
-            .Add("maxPrice", query.MaxPrice?.ToString())
-            .Add("categoryId", query.CategoryId?.ToString())
-            .Add("sortBy", query.SortBy == "(none)" ? null : query.SortBy)
-            .Add("sortDirection", query.SortDirection)
-            .Build();
+        while (true)
+        {
+            var qs = new QueryStringBuilder()
+                .Add("page", query.Page.ToString())
+                .Add("pageSize", query.PageSize.ToString())
+                .Add("search", query.Search)
+                .Add("minPrice", query.MinPrice?.ToString())
+                .Add("maxPrice", query.MaxPrice?.ToString())
+                .Add("categoryId", query.CategoryId?.ToString())
+                .Add("sortBy", query.SortBy == "(none)" || query.SortBy == null ? null : query.SortBy)
+                .Add("sortDirection", query.SortDirection)
+                .Build();
 
-        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
-        if (response?.Data != null && response.Data.Count > 0)
-        {
-            TableRenderer.DisplayTable(response.Data, $"Products (Page {response.CurrentPage}/{Math.Ceiling((double)response.TotalCount / response.PageSize)})", "CategoryId");
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[yellow]No products found[/]");
+            var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+            if (response?.Data != null && response.Data.Count > 0)
+            {
+                var pagination = new PaginationState
+                {
+                    CurrentPage = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = response.TotalCount
+                };
+
+                TableRenderer.DisplayTable(
+                    response.Data,
+                    $"Products (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
+                    pagination.IndexOffset,
+                    "CategoryId"
+                );
+
+                // Show pagination navigation
+                var navChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                    .Title("Navigation:")
+                    .AddChoices(pagination.GetNavigationChoices()));
+
+                if (navChoice == "Back to Menu")
+                    break;
+                else if (navChoice == "Next Page")
+                    query.Page++;
+                else if (navChoice == "Previous Page")
+                    query.Page--;
+                else if (navChoice == "Jump to Page")
+                {
+                    int targetPage = ConsoleInputHelper.PromptPositiveInt($"Enter page number (1-{pagination.TotalPages})");
+                    if (targetPage >= 1 && targetPage <= pagination.TotalPages)
+                        query.Page = targetPage;
+                    else
+                        AnsiConsole.MarkupLine($"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]");
+                }
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[yellow]No products found[/]");
+                break;
+            }
         }
     }
 
@@ -111,9 +217,31 @@ public class ProductMenuHandler : IConsoleMenuHandler
 
     private static async Task UpdateAsync(HttpClient http)
     {
-        int productId = ConsoleInputHelper.PromptPositiveInt("Product ID");
+        // Show list for selection
+        var qs = new QueryStringBuilder()
+            .Add("page", "1")
+            .Add("pageSize", "50")
+            .Build();
 
-        var productResponse = await ApiClient.FetchEntityAsync<ProductDto>(http, $"/api/product/{productId}");
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+        if (response?.Data == null || response.Data.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No products available[/]");
+            return;
+        }
+
+        var pagination = new PaginationState
+        {
+            CurrentPage = 1,
+            PageSize = 50,
+            TotalCount = response.TotalCount
+        };
+
+        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product to Update", pagination.IndexOffset, "CategoryId");
+        if (selected == null)
+            return;
+
+        var productResponse = await ApiClient.FetchEntityAsync<ProductDto>(http, $"/api/product/{selected.ProductId}");
         if (productResponse?.Data == null)
         {
             ConsoleInputHelper.DisplayError("Product not found");
@@ -132,7 +260,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
 
         var payload = new
         {
-            productId,
+            productId = selected.ProductId,
             name,
             description,
             price = string.IsNullOrWhiteSpace(priceStr) ? current.Price : decimal.Parse(priceStr),
@@ -142,20 +270,38 @@ public class ProductMenuHandler : IConsoleMenuHandler
                 isActiveStr.Equals("yes", StringComparison.OrdinalIgnoreCase)
         };
 
-        await ApiClient.PutAsync(http, $"/api/product/{productId}", payload);
+        await ApiClient.PutAsync(http, $"/api/product/{selected.ProductId}", payload);
     }
 
     private static async Task DeleteAsync(HttpClient http)
     {
-        int productId = ConsoleInputHelper.PromptPositiveInt("Product ID");
+        // Show list for selection
+        var qs = new QueryStringBuilder()
+            .Add("page", "1")
+            .Add("pageSize", "50")
+            .Build();
 
-        if (!AnsiConsole.Confirm($"Delete product {productId}?"))
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+        if (response?.Data == null || response.Data.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]Cancelled[/]");
+            AnsiConsole.MarkupLine("[yellow]No products available[/]");
             return;
         }
 
-        await ApiClient.DeleteAsync(http, $"/api/product/{productId}");
+        var pagination = new PaginationState
+        {
+            CurrentPage = 1,
+            PageSize = 50,
+            TotalCount = response.TotalCount
+        };
+
+        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product to Delete", pagination.IndexOffset, "CategoryId");
+        if (selected == null)
+            return;
+
+        if (!AnsiConsole.Confirm($"[red]Are you sure you want to delete '{selected.Name}'?[/]"))
+            return;
+        await ApiClient.DeleteAsync(http, $"/api/product/{selected.ProductId}");
     }
 
     private static void DisplayCurrentValues(ProductDto current)
@@ -174,7 +320,6 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var input = AnsiConsole.Ask<string>($"{label} (leave blank to keep):", string.Empty);
         return string.IsNullOrWhiteSpace(input) ? currentValue : input;
     }
-
     private static (string SortBy, string? SortDirection) PromptSortOptions(string[] options)
     {
         var sortBy = AnsiConsole.Prompt(new SelectionPrompt<string>()
@@ -194,14 +339,14 @@ public class ProductMenuHandler : IConsoleMenuHandler
 
     private sealed record ProductListQuery
     {
-        public int Page { get; init; }
-        public int PageSize { get; init; }
-        public string? Search { get; init; }
-        public decimal? MinPrice { get; init; }
-        public decimal? MaxPrice { get; init; }
-        public int? CategoryId { get; init; }
-        public string SortBy { get; init; } = "(none)";
-        public string? SortDirection { get; init; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public string? Search { get; set; }
+        public decimal? MinPrice { get; set; }
+        public decimal? MaxPrice { get; set; }
+        public int? CategoryId { get; set; }
+        public string SortBy { get; set; } = "(none)";
+        public string? SortDirection { get; set; }
     }
 
     private sealed record ProductDto

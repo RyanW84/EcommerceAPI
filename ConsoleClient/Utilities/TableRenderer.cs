@@ -18,7 +18,13 @@ public static class TableRenderer
     /// <param name="title">The table title</param>
     /// <param name="excludeColumns">Column names to exclude from display</param>
     /// <returns>The selected item, or null if cancelled</returns>
-    public static T? SelectFromTable<T>(IList<T> items, string title, params string[] excludeColumns) where T : class
+    public static T? SelectFromTable<T>(
+        IList<T> items,
+        string title,
+        int indexOffset = 0,
+        params string[] excludeColumns
+    )
+        where T : class
     {
         if (items.Count == 0)
         {
@@ -26,7 +32,7 @@ public static class TableRenderer
             return null;
         }
 
-        var table = new Table { Title = title };
+        var table = new Table { Title = new TableTitle(title) };
         table.AddColumn("[bold]#[/]");
 
         var properties = GetDisplayProperties<T>(excludeColumns);
@@ -37,7 +43,7 @@ public static class TableRenderer
 
         for (int i = 0; i < items.Count; i++)
         {
-            var cells = new List<string> { (i + 1).ToString() };
+            var cells = new List<string> { (indexOffset + i + 1).ToString() };
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(items[i]);
@@ -49,25 +55,27 @@ public static class TableRenderer
         AnsiConsole.Write(table);
 
         // Prompt for selection
-        var choices = Enumerable.Range(1, items.Count)
+        var choices = Enumerable
+            .Range(indexOffset + 1, items.Count)
             .Select(i => i.ToString())
             .Concat(new[] { "Cancel" })
             .ToList();
 
-        var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Select an item:")
-            .AddChoices(choices));
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>().Title("Select an item:").AddChoices(choices)
+        );
 
         if (choice == "Cancel" || !int.TryParse(choice, out int selectedIndex))
             return null;
 
-        return items[selectedIndex - 1];
+        return items[selectedIndex - indexOffset - 1];
     }
 
     /// <summary>
     /// Displays a collection of items as a formatted table without selection.
     /// </summary>
-    public static void DisplayTable<T>(IList<T> items, string title, params string[] excludeColumns) where T : class
+    public static void DisplayTable<T>(IList<T> items, string title, int indexOffset = 0, params string[] excludeColumns)
+        where T : class
     {
         if (items.Count == 0)
         {
@@ -75,7 +83,7 @@ public static class TableRenderer
             return;
         }
 
-        var table = new Table { Title = title };
+        var table = new Table { Title = new TableTitle(title) };
         table.AddColumn("[bold]#[/]");
 
         var properties = GetDisplayProperties<T>(excludeColumns);
@@ -86,7 +94,7 @@ public static class TableRenderer
 
         for (int i = 0; i < items.Count; i++)
         {
-            var cells = new List<string> { (i + 1).ToString() };
+            var cells = new List<string> { (indexOffset + i + 1).ToString() };
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(items[i]);
@@ -101,13 +109,21 @@ public static class TableRenderer
     /// <summary>
     /// Gets properties suitable for display, excluding specified columns and internal fields.
     /// </summary>
-    private static List<PropertyInfo> GetDisplayProperties<T>(string[] excludeColumns) where T : class
+    private static List<PropertyInfo> GetDisplayProperties<T>(string[] excludeColumns)
+        where T : class
     {
-        var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && !excludeColumns.Contains(p.Name, StringComparer.OrdinalIgnoreCase))
-            .Where(p => p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) ||
-                        p.PropertyType == typeof(decimal) || p.PropertyType == typeof(DateTime) ||
-                        p.PropertyType == typeof(DateTime?))
+        var props = typeof(T)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p =>
+                p.CanRead && !excludeColumns.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
+            )
+            .Where(p =>
+                p.PropertyType.IsPrimitive
+                || p.PropertyType == typeof(string)
+                || p.PropertyType == typeof(decimal)
+                || p.PropertyType == typeof(DateTime)
+                || p.PropertyType == typeof(DateTime?)
+            )
             .OrderBy(p => p.Name)
             .ToList();
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
 using ECommerceApp.ConsoleClient.Interfaces;
+using ECommerceApp.ConsoleClient.Models;
 using ECommerceApp.ConsoleClient.Utilities;
 using Spectre.Console;
 
@@ -44,26 +45,101 @@ public class SalesMenuHandler : IConsoleMenuHandler
 
     private static async Task ListAsync(HttpClient http)
     {
-        var (page, pageSize) = ConsoleInputHelper.PromptPagination();
-        DateTime? start = ConsoleInputHelper.PromptOptionalDate("Start Date (yyyy-MM-dd)");
-        DateTime? end = ConsoleInputHelper.PromptOptionalDate("End Date (yyyy-MM-dd)");
-        string? customerName = ConsoleInputHelper.PromptOptional("Customer Name");
-        string? customerEmail = ConsoleInputHelper.PromptOptional("Customer Email");
+        var pageSize = ConsoleInputHelper.PromptPositiveInt("Items per page");
 
-        var (sortBy, sortDirection) = PromptSortOptions(new[] { "(none)", "saledate", "totalamount", "customername" });
+        // Ask if user wants to apply filters
+        var applyFilters = AnsiConsole.Confirm("Apply filters?", false);
 
-        var qs = new QueryStringBuilder()
-            .Add("page", page.ToString())
-            .Add("pageSize", pageSize.ToString())
-            .Add("startDate", start?.ToString("yyyy-MM-dd"))
-            .Add("endDate", end?.ToString("yyyy-MM-dd"))
-            .Add("customerName", customerName)
-            .Add("customerEmail", customerEmail)
-            .Add("sortBy", sortBy == "(none)" ? null : sortBy)
-            .Add("sortDirection", sortDirection)
-            .Build();
+        DateTime? start = null;
+        DateTime? end = null;
+        string? customerName = null;
+        string? customerEmail = null;
+        string? sortBy = null;
+        string? sortDirection = null;
 
-        await ApiClient.GetAndRenderAsync(http, $"/api/sales{qs}");
+        if (applyFilters)
+        {
+            start = ConsoleInputHelper.PromptOptionalDate("Start Date (yyyy-MM-dd)");
+            end = ConsoleInputHelper.PromptOptionalDate("End Date (yyyy-MM-dd)");
+            customerName = ConsoleInputHelper.PromptOptional("Customer Name");
+            customerEmail = ConsoleInputHelper.PromptOptional("Customer Email");
+            var (sortByResult, sortDirectionResult) = PromptSortOptions(new[] { "(none)", "saledate", "totalamount", "customername" });
+            sortBy = sortByResult;
+            sortDirection = sortDirectionResult;
+        }
+
+        var query = new SaleListQuery
+        {
+            Page = 1,
+            PageSize = pageSize,
+            StartDate = start,
+            EndDate = end,
+            CustomerName = customerName,
+            CustomerEmail = customerEmail,
+            SortBy = sortBy,
+            SortDirection = sortDirection
+        };
+
+        await BuildAndExecuteListQueryWithPagination(http, query);
+    }
+
+    private static async Task BuildAndExecuteListQueryWithPagination(HttpClient http, SaleListQuery query)
+    {
+        while (true)
+        {
+            var qs = new QueryStringBuilder()
+                .Add("page", query.Page.ToString())
+                .Add("pageSize", query.PageSize.ToString())
+                .Add("startDate", query.StartDate?.ToString("yyyy-MM-dd"))
+                .Add("endDate", query.EndDate?.ToString("yyyy-MM-dd"))
+                .Add("customerName", query.CustomerName)
+                .Add("customerEmail", query.CustomerEmail)
+                .Add("sortBy", query.SortBy == "(none)" || query.SortBy == null ? null : query.SortBy)
+                .Add("sortDirection", query.SortDirection)
+                .Build();
+
+            var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
+            if (response?.Data != null && response.Data.Count > 0)
+            {
+                var pagination = new PaginationState
+                {
+                    CurrentPage = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = response.TotalCount
+                };
+
+                TableRenderer.DisplayTable(
+                    response.Data,
+                    $"Sales (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
+                    pagination.IndexOffset
+                );
+
+                // Show pagination navigation
+                var navChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                    .Title("Navigation:")
+                    .AddChoices(pagination.GetNavigationChoices()));
+
+                if (navChoice == "Back to Menu")
+                    break;
+                else if (navChoice == "Next Page")
+                    query.Page++;
+                else if (navChoice == "Previous Page")
+                    query.Page--;
+                else if (navChoice == "Jump to Page")
+                {
+                    int targetPage = ConsoleInputHelper.PromptPositiveInt($"Enter page number (1-{pagination.TotalPages})");
+                    if (targetPage >= 1 && targetPage <= pagination.TotalPages)
+                        query.Page = targetPage;
+                    else
+                        AnsiConsole.MarkupLine($"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]");
+                }
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[yellow]No sales found[/]");
+                break;
+            }
+        }
     }
 
     private static async Task CreateAsync(HttpClient http)
@@ -87,9 +163,30 @@ public class SalesMenuHandler : IConsoleMenuHandler
 
     private static async Task UpdateAsync(HttpClient http)
     {
-        int saleId = ConsoleInputHelper.PromptPositiveInt("Sale ID");
+        var qs = new QueryStringBuilder()
+            .Add("page", "1")
+            .Add("pageSize", "50")
+            .Build();
 
-        var saleResponse = await ApiClient.FetchEntityAsync<SaleDto>(http, $"/api/sales/{saleId}");
+        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
+        if (response?.Data == null || response.Data.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No sales available[/]");
+            return;
+        }
+
+        var pagination = new PaginationState
+        {
+            CurrentPage = 1,
+            PageSize = 50,
+            TotalCount = response.TotalCount
+        };
+
+        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Sale to Update", pagination.IndexOffset);
+        if (selected == null)
+            return;
+
+        var saleResponse = await ApiClient.FetchEntityAsync<SaleDto>(http, $"/api/sales/{selected.SaleId}");
         if (saleResponse?.Data == null)
         {
             ConsoleInputHelper.DisplayError("Sale not found");
@@ -105,26 +202,44 @@ public class SalesMenuHandler : IConsoleMenuHandler
 
         var payload = new
         {
-            saleId,
+            saleId = selected.SaleId,
             customerName,
             customerEmail,
             saleDate = string.IsNullOrWhiteSpace(saleDateStr) ? current.SaleDate : DateTime.Parse(saleDateStr)
         };
 
-        await ApiClient.PutAsync(http, $"/api/sales/{saleId}", payload);
+        await ApiClient.PutAsync(http, $"/api/sales/{selected.SaleId}", payload);
     }
 
     private static async Task DeleteAsync(HttpClient http)
     {
-        int saleId = ConsoleInputHelper.PromptPositiveInt("Sale ID");
+        var qs = new QueryStringBuilder()
+            .Add("page", "1")
+            .Add("pageSize", "50")
+            .Build();
 
-        if (!AnsiConsole.Confirm($"Delete sale {saleId}?"))
+        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
+        if (response?.Data == null || response.Data.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]Cancelled[/]");
+            AnsiConsole.MarkupLine("[yellow]No sales available[/]");
             return;
         }
 
-        await ApiClient.DeleteAsync(http, $"/api/sales/{saleId}");
+        var pagination = new PaginationState
+        {
+            CurrentPage = 1,
+            PageSize = 50,
+            TotalCount = response.TotalCount
+        };
+
+        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Sale to Delete", pagination.IndexOffset);
+        if (selected == null)
+            return;
+
+        if (!AnsiConsole.Confirm($"[red]Are you sure you want to delete the sale for '{selected.CustomerName}'?[/]"))
+            return;
+
+        await ApiClient.DeleteAsync(http, $"/api/sales/{selected.SaleId}");
     }
 
     private static async Task<List<object>> PromptSaleItemsAsync()
