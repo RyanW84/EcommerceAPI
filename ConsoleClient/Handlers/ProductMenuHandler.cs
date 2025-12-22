@@ -150,48 +150,58 @@ public class ProductMenuHandler : IConsoleMenuHandler
                 .Build();
 
             var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
-            if (response?.Data != null && response.Data.Count > 0)
-            {
-                var pagination = new PaginationState
-                {
-                    CurrentPage = query.Page,
-                    PageSize = query.PageSize,
-                    TotalCount = response.TotalCount
-                };
-
-                TableRenderer.DisplayTable(
-                    response.Data,
-                    $"Products (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
-                    pagination.IndexOffset,
-                    "CategoryId"
-                );
-
-                // Show pagination navigation
-                var navChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                    .Title("Navigation:")
-                    .AddChoices(pagination.GetNavigationChoices()));
-
-                if (navChoice == "Back to Menu")
-                    break;
-                else if (navChoice == "Next Page")
-                    query.Page++;
-                else if (navChoice == "Previous Page")
-                    query.Page--;
-                else if (navChoice == "Jump to Page")
-                {
-                    int targetPage = ConsoleInputHelper.PromptPositiveInt($"Enter page number (1-{pagination.TotalPages})");
-                    if (targetPage >= 1 && targetPage <= pagination.TotalPages)
-                        query.Page = targetPage;
-                    else
-                        AnsiConsole.MarkupLine($"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]");
-                }
-            }
-            else
+            if (response?.Data == null || response.Data.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No products found[/]");
                 break;
             }
+
+            var pagination = new PaginationState
+            {
+                CurrentPage = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = response.TotalCount
+            };
+
+            TableRenderer.DisplayTable(
+                response.Data,
+                $"Products (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
+                pagination.IndexOffset,
+                "CategoryId"
+            );
+
+            if (!HandlePaginationNavigation(pagination, query))
+                break;
         }
+    }
+
+    private static bool HandlePaginationNavigation(PaginationState pagination, ProductListQuery query)
+    {
+        var navChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Navigation:")
+            .AddChoices(pagination.GetNavigationChoices()));
+
+        if (navChoice == "Back to Menu")
+            return false;
+
+        if (navChoice == "Next Page")
+        {
+            query.Page++;
+        }
+        else if (navChoice == "Previous Page")
+        {
+            query.Page--;
+        }
+        else if (navChoice == "Jump to Page")
+        {
+            int targetPage = ConsoleInputHelper.PromptPositiveInt($"Enter page number (1-{pagination.TotalPages})");
+            if (targetPage >= 1 && targetPage <= pagination.TotalPages)
+                query.Page = targetPage;
+            else
+                AnsiConsole.MarkupLine($"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]");
+        }
+
+        return true;
     }
 
     private static async Task CreateAsync(HttpClient http)
@@ -338,25 +348,25 @@ public class ProductMenuHandler : IConsoleMenuHandler
     }
 
     private sealed record ProductListQuery
-    {
-        public int Page { get; set; }
-        public int PageSize { get; set; }
-        public string? Search { get; set; }
-        public decimal? MinPrice { get; set; }
-        public decimal? MaxPrice { get; set; }
-        public int? CategoryId { get; set; }
-        public string SortBy { get; set; } = "(none)";
-        public string? SortDirection { get; set; }
-    }
+{
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public string? Search { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public int? CategoryId { get; set; }
+    public string SortBy { get; set; } = "(none)";
+    public string? SortDirection { get; set; }
+}
 
-    private sealed record ProductDto
-    {
-        public int ProductId { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public string? Description { get; init; }
-        public decimal Price { get; init; }
-        public int Stock { get; init; }
-        public bool IsActive { get; init; }
-        public int CategoryId { get; init; }
-    }
+private sealed record ProductDto
+{
+    public int ProductId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public decimal Price { get; init; }
+    public int Stock { get; init; }
+    public bool IsActive { get; init; }
+    public int CategoryId { get; init; }
+}
 }
