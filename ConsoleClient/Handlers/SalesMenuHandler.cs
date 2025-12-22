@@ -150,14 +150,15 @@ public class SalesMenuHandler : IConsoleMenuHandler
         var saleDate = AnsiConsole.Prompt(new TextPrompt<DateTime>("Sale Date (yyyy-MM-dd):")
             .DefaultValue(DateTime.Now));
 
-        var saleItems = await PromptSaleItemsAsync();
+        var saleItems = await PromptSaleItemsAsync(http);
         if (saleItems.Count == 0)
         {
             ConsoleInputHelper.DisplayError("Must add at least one sale item");
             return;
         }
 
-        var payload = new { customerName, customerEmail, customerAddress, saleDate, saleItems };
+        var sale = new { customerName, customerEmail, customerAddress, saleDate, saleItems };
+        var payload = new { payload = sale };
         await ApiClient.PostAsync(http, "/api/sales", payload);
     }
 
@@ -182,7 +183,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Sale to Update", pagination.IndexOffset);
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Sale to Update", pagination.IndexOffset, "CustomerName");
         if (selected == null)
             return;
 
@@ -200,7 +201,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
         var customerEmail = PromptOptionalField("Email", current.CustomerEmail);
         var saleDateStr = AnsiConsole.Ask<string>("Sale Date (leave blank to keep, format: yyyy-MM-dd):", string.Empty);
 
-        var payload = new
+        var sale = new
         {
             saleId = selected.SaleId,
             customerName,
@@ -208,6 +209,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
             saleDate = string.IsNullOrWhiteSpace(saleDateStr) ? current.SaleDate : DateTime.Parse(saleDateStr)
         };
 
+        var payload = new { payload = sale };
         await ApiClient.PutAsync(http, $"/api/sales/{selected.SaleId}", payload);
     }
 
@@ -232,7 +234,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Sale to Delete", pagination.IndexOffset);
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Sale to Delete", pagination.IndexOffset, "CustomerName");
         if (selected == null)
             return;
 
@@ -242,7 +244,7 @@ public class SalesMenuHandler : IConsoleMenuHandler
         await ApiClient.DeleteAsync(http, $"/api/sales/{selected.SaleId}");
     }
 
-    private static async Task<List<object>> PromptSaleItemsAsync()
+    private static async Task<List<object>> PromptSaleItemsAsync(HttpClient http)
     {
         var saleItems = new List<object>();
         AnsiConsole.MarkupLine("[yellow]Enter Sale Items[/]");
@@ -253,9 +255,20 @@ public class SalesMenuHandler : IConsoleMenuHandler
             if (!addMore)
                 break;
 
-            var productId = ConsoleInputHelper.PromptPositiveInt("Product ID");
+            // Show list of products to select from
+            var productsResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, "/api/product?page=1&pageSize=100");
+            if (productsResponse?.Data == null || productsResponse.Data.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No products available[/]");
+                break;
+            }
+
+            var selectedProduct = TableRenderer.SelectFromPrompt(productsResponse.Data, "Select a Product", 0, "Name");
+            if (selectedProduct == null)
+                continue;
+
             var quantity = ConsoleInputHelper.PromptPositiveInt("Quantity");
-            saleItems.Add(new { productId, quantity });
+            saleItems.Add(new { productId = selectedProduct.ProductId, quantity });
         }
 
         return saleItems;
@@ -299,6 +312,30 @@ public class SalesMenuHandler : IConsoleMenuHandler
         public DateTime SaleDate { get; init; }
         public string? CustomerName { get; init; }
         public string? CustomerEmail { get; init; }
+        public string? CustomerAddress { get; init; }
         public decimal TotalAmount { get; init; }
+    }
+
+    private sealed record ProductDto
+    {
+        public int ProductId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public decimal Price { get; init; }
+        public int Stock { get; init; }
+        public bool IsActive { get; init; }
+        public int CategoryId { get; init; }
+    }
+
+    private sealed record SaleListQuery
+    {
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? CustomerName { get; set; }
+        public string? CustomerEmail { get; set; }
+        public string? SortBy { get; set; }
+        public string? SortDirection { get; set; }
     }
 }

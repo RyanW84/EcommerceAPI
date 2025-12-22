@@ -44,7 +44,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
     private static async Task GetByIdAsync(HttpClient http)
     {
         // First, show a list for the user to select from
-        var (page, pageSize) = (1, 20);
+        var (page, pageSize) = (1, 50);
         var qs = new QueryStringBuilder()
             .Add("page", page.ToString())
             .Add("pageSize", pageSize.ToString())
@@ -64,14 +64,11 @@ public class ProductMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product", pagination.IndexOffset, "CategoryId");
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product", pagination.IndexOffset, "Name");
         if (selected != null)
         {
-            var detailResponse = await ApiClient.FetchEntityAsync<ProductDto>(http, $"/api/product/{selected.ProductId}");
-            if (detailResponse?.Data != null)
-            {
-                TableRenderer.DisplayTable(new[] { detailResponse.Data }.ToList(), "Product Details", 0, "CategoryId");
-            }
+            // Display the selected product directly from the list
+            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Product Details", pagination.IndexOffset, "CategoryId");
         }
     }
 
@@ -127,7 +124,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
             MinPrice = minPrice,
             MaxPrice = maxPrice,
             CategoryId = categoryId,
-            SortBy = sortBy,
+            SortBy = sortBy ?? "(none)",
             SortDirection = sortDirection
         };
 
@@ -206,22 +203,34 @@ public class ProductMenuHandler : IConsoleMenuHandler
 
     private static async Task CreateAsync(HttpClient http)
     {
+        // Show list of categories to select from
+        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=100");
+        if (categoriesResponse?.Data == null || categoriesResponse.Data.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No categories available. Please create a category first.[/]");
+            return;
+        }
+
+        var selectedCategory = TableRenderer.SelectFromPrompt(categoriesResponse.Data, "Select a Category", 0, "Name");
+        if (selectedCategory == null)
+            return;
+
         var name = ConsoleInputHelper.PromptRequired("Product Name");
         var description = ConsoleInputHelper.PromptRequired("Description");
         var price = ConsoleInputHelper.PromptPositiveDecimal("Price");
         var stock = ConsoleInputHelper.PromptNonNegativeInt("Stock");
-        var categoryId = ConsoleInputHelper.PromptPositiveInt("Category ID");
 
-        var payload = new
+        var product = new
         {
             name,
             description,
             price,
             stock,
-            categoryId,
+            categoryId = selectedCategory.CategoryId,
             isActive = true
         };
 
+        var payload = new { payload = product };
         await ApiClient.PostAsync(http, "/api/product", payload);
     }
 
@@ -247,7 +256,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product to Update", pagination.IndexOffset, "CategoryId");
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product to Update", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 
@@ -265,21 +274,36 @@ public class ProductMenuHandler : IConsoleMenuHandler
         var description = PromptOptionalField("Description", current.Description);
         var priceStr = AnsiConsole.Ask<string>("Price (leave blank to keep):", string.Empty);
         var stockStr = AnsiConsole.Ask<string>("Stock (leave blank to keep):", string.Empty);
-        var categoryIdStr = AnsiConsole.Ask<string>("Category ID (leave blank to keep):", string.Empty);
+
+        // Show category selection list instead of ID prompt
+        var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=100");
+        int categoryId = current.CategoryId;
+        if (categoriesResponse?.Data != null && categoriesResponse.Data.Count > 0)
+        {
+            var changeCategoryChoice = AnsiConsole.Confirm("Change category?", false);
+            if (changeCategoryChoice)
+            {
+                var selectedCategory = TableRenderer.SelectFromPrompt(categoriesResponse.Data, "Select a Category", 0, "Name");
+                if (selectedCategory != null)
+                    categoryId = selectedCategory.CategoryId;
+            }
+        }
+
         var isActiveStr = AnsiConsole.Ask<string>("Active? (yes/no, leave blank to keep):", string.Empty);
 
-        var payload = new
+        var product = new
         {
             productId = selected.ProductId,
             name,
             description,
             price = string.IsNullOrWhiteSpace(priceStr) ? current.Price : decimal.Parse(priceStr),
             stock = string.IsNullOrWhiteSpace(stockStr) ? current.Stock : int.Parse(stockStr),
-            categoryId = string.IsNullOrWhiteSpace(categoryIdStr) ? current.CategoryId : int.Parse(categoryIdStr),
+            categoryId = categoryId,
             isActive = string.IsNullOrWhiteSpace(isActiveStr) ? current.IsActive :
                 isActiveStr.Equals("yes", StringComparison.OrdinalIgnoreCase)
         };
 
+        var payload = new { payload = product };
         await ApiClient.PutAsync(http, $"/api/product/{selected.ProductId}", payload);
     }
 
@@ -305,7 +329,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Product to Delete", pagination.IndexOffset, "CategoryId");
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product to Delete", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 
@@ -348,25 +372,32 @@ public class ProductMenuHandler : IConsoleMenuHandler
     }
 
     private sealed record ProductListQuery
-{
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public string? Search { get; set; }
-    public decimal? MinPrice { get; set; }
-    public decimal? MaxPrice { get; set; }
-    public int? CategoryId { get; set; }
-    public string SortBy { get; set; } = "(none)";
-    public string? SortDirection { get; set; }
-}
+    {
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public string? Search { get; set; }
+        public decimal? MinPrice { get; set; }
+        public decimal? MaxPrice { get; set; }
+        public int? CategoryId { get; set; }
+        public string SortBy { get; set; } = "(none)";
+        public string? SortDirection { get; set; }
+    }
 
-private sealed record ProductDto
-{
-    public int ProductId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public decimal Price { get; init; }
-    public int Stock { get; init; }
-    public bool IsActive { get; init; }
-    public int CategoryId { get; init; }
-}
+    private sealed record CategoryDto
+    {
+        public int CategoryId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+    }
+
+    private sealed record ProductDto
+    {
+        public int ProductId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public decimal Price { get; init; }
+        public int Stock { get; init; }
+        public bool IsActive { get; init; }
+        public int CategoryId { get; init; }
+    }
 }

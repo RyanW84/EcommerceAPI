@@ -43,12 +43,13 @@ public static class DatabaseSeeder
             new Category { Name = "Electronics", Description = "Electronic devices and gadgets" },
             new Category { Name = "Clothing", Description = "Apparel and fashion items" },
             new Category { Name = "Books", Description = "Books and publications" },
-            new Category
-            {
-                Name = "Home & Garden",
-                Description = "Home improvement and gardening supplies",
-            },
+            new Category { Name = "Home & Garden", Description = "Home improvement and gardening supplies" },
             new Category { Name = "Sports", Description = "Sports and outdoor equipment" },
+            new Category { Name = "Furniture", Description = "Home furniture and decor" },
+            new Category { Name = "Toys", Description = "Toys and games for all ages" },
+            new Category { Name = "Beauty", Description = "Beauty and personal care products" },
+            new Category { Name = "Food & Beverage", Description = "Food and drink items" },
+            new Category { Name = "Automotive", Description = "Car accessories and parts" },
         };
 
         context.Categories.AddRange(categories);
@@ -66,48 +67,77 @@ public static class DatabaseSeeder
 
     private static Product[] GetProductSeedData(List<Category> categories)
     {
-        var electronics = categories[0];
-        var clothing = categories[1];
-        var books = categories[2];
-        var homeAndGarden = categories[3];
-        var sports = categories[4];
+        var products = new List<Product>();
+        var random = new Random(42);
 
-        return new[]
+        string[] productNames =
         {
-            // Electronics
-            new Product { Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Stock = 10, IsActive = true, CategoryId = electronics.CategoryId },
-            new Product { Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Stock = 50, IsActive = true, CategoryId = electronics.CategoryId },
-            new Product { Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Stock = 30, IsActive = true, CategoryId = electronics.CategoryId },
-            new Product { Name = "Monitor", Description = "27-inch 4K monitor", Price = 399.99m, Stock = 15, IsActive = true, CategoryId = electronics.CategoryId },
-            
-            // Clothing
-            new Product { Name = "T-Shirt", Description = "Cotton t-shirt", Price = 19.99m, Stock = 100, IsActive = true, CategoryId = clothing.CategoryId },
-            new Product { Name = "Jeans", Description = "Classic blue jeans", Price = 49.99m, Stock = 80, IsActive = true, CategoryId = clothing.CategoryId },
-            new Product { Name = "Jacket", Description = "Winter jacket", Price = 89.99m, Stock = 25, IsActive = true, CategoryId = clothing.CategoryId },
-            
-            // Books
-            new Product { Name = "C# Programming", Description = "Advanced C# guide", Price = 39.99m, Stock = 40, IsActive = true, CategoryId = books.CategoryId },
-            new Product { Name = "Design Patterns", Description = "GOF design patterns", Price = 44.99m, Stock = 35, IsActive = true, CategoryId = books.CategoryId },
-            new Product { Name = "Clean Code", Description = "Writing clean code", Price = 34.99m, Stock = 50, IsActive = true, CategoryId = books.CategoryId },
-            
-            // Home & Garden
-            new Product { Name = "Garden Hose", Description = "50ft expandable hose", Price = 34.99m, Stock = 20, IsActive = true, CategoryId = homeAndGarden.CategoryId },
-            new Product { Name = "Lawn Mower", Description = "Electric lawn mower", Price = 249.99m, Stock = 8, IsActive = true, CategoryId = homeAndGarden.CategoryId },
-            new Product { Name = "Paint Set", Description = "Interior paint set", Price = 79.99m, Stock = 15, IsActive = true, CategoryId = homeAndGarden.CategoryId },
-            new Product { Name = "Tool Set", Description = "150-piece tool set", Price = 89.99m, Stock = 12, IsActive = true, CategoryId = homeAndGarden.CategoryId },
-            
-            // Sports
-            new Product { Name = "Basketball", Description = "Official size basketball", Price = 29.99m, Stock = 25, IsActive = true, CategoryId = sports.CategoryId },
-            new Product { Name = "Yoga Mat", Description = "Non-slip yoga mat", Price = 24.99m, Stock = 40, IsActive = true, CategoryId = sports.CategoryId },
-            new Product { Name = "Running Shoes", Description = "Professional running shoes", Price = 119.99m, Stock = 30, IsActive = true, CategoryId = sports.CategoryId },
-            new Product { Name = "Tennis Racket", Description = "Carbon fiber racket", Price = 149.99m, Stock = 10, IsActive = true, CategoryId = sports.CategoryId },
+            // Electronics (15)
+            "Laptop", "Mouse", "Keyboard", "Monitor", "Headphones", "Webcam", "USB Hub", "External SSD", "Graphics Card", "Power Supply",
+            "RAM Module", "Motherboard", "CPU Cooler", "Case Fan", "HDMI Cable",
+            // Clothing (10)
+            "T-Shirt", "Jeans", "Jacket", "Sweater", "Shorts", "Socks", "Hat", "Scarf", "Gloves", "Shoes",
+            // Books (5)
+            "C# Programming", "Design Patterns", "Clean Code", "The Pragmatic Programmer", "Code Complete",
+            // Home & Garden (5)
+            "Garden Hose", "Lawn Mower", "Paint Set", "Tool Set", "Light Fixture",
+            // Sports (5)
+            "Basketball", "Yoga Mat", "Running Shoes", "Tennis Racket", "Dumbbell Set",
+            // Furniture (3)
+            "Office Chair", "Desk", "Bookshelf",
+            // Toys (2)
+            "Board Game", "Action Figure",
         };
+
+        string[] descriptions =
+        {
+            "High-quality item", "Premium product", "Professional grade", "Best seller", "Durable and reliable",
+            "Great value", "Excellent quality", "Top rated", "Customer favorite", "Long lasting",
+        };
+
+        int productIndex = 0;
+        foreach (var category in categories)
+        {
+            // Distribute products across categories
+            int productsPerCategory = productIndex < 45 ? 5 : (productIndex < 50 ? 10 : 0);
+
+            for (int i = 0; i < productsPerCategory && productIndex < 50; i++)
+            {
+                products.Add(new Product
+                {
+                    Name = $"{productNames[productIndex % productNames.Length]} {(productIndex / productNames.Length) + 1}",
+                    Description = $"{descriptions[random.Next(descriptions.Length)]} - Category: {category.Name}",
+                    Price = Math.Round((decimal)(10 + random.Next(0, 500) + random.NextDouble()), 2),
+                    Stock = random.Next(5, 200),
+                    IsActive = true,
+                    CategoryId = category.CategoryId
+                });
+                productIndex++;
+            }
+        }
+
+        // Fill remaining products to reach 50
+        while (productIndex < 50)
+        {
+            products.Add(new Product
+            {
+                Name = $"{productNames[productIndex % productNames.Length]} {(productIndex / productNames.Length) + 1}",
+                Description = $"{descriptions[random.Next(descriptions.Length)]} - General Product",
+                Price = Math.Round((decimal)(10 + random.Next(0, 500) + random.NextDouble()), 2),
+                Stock = random.Next(5, 200),
+                IsActive = true,
+                CategoryId = categories[random.Next(categories.Count)].CategoryId
+            });
+            productIndex++;
+        }
+
+        return products.ToArray();
     }
 
     private static void SeedSales(ECommerceDbContext context, List<Product> products)
     {
         var random = new Random(42);
-        const int saleCount = 50;
+        const int saleCount = 100;
 
         for (int i = 0; i < saleCount; i++)
         {

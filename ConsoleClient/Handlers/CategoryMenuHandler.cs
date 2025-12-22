@@ -151,14 +151,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Category", pagination.IndexOffset);
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category", pagination.IndexOffset, "Name");
         if (selected != null)
         {
-            var detailResponse = await ApiClient.FetchEntityAsync<CategoryDto>(http, $"/api/categories/{selected.CategoryId}");
-            if (detailResponse?.Data != null)
-            {
-                TableRenderer.DisplayTable(new[] { detailResponse.Data }.ToList(), "Category Details", 0);
-            }
+            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Category Details", pagination.IndexOffset);
         }
     }
 
@@ -181,7 +177,8 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var name = ConsoleInputHelper.PromptRequired("Category Name");
         var description = ConsoleInputHelper.PromptRequired("Description");
 
-        var payload = new { name, description };
+        var category = new { name, description };
+        var payload = new { payload = category };
         await ApiClient.PostAsync(http, "/api/categories", payload);
     }
 
@@ -206,7 +203,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Category to Update", pagination.IndexOffset);
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category to Update", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 
@@ -225,12 +222,13 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var name = PromptOptionalField("Category Name", current.Name);
         var description = PromptOptionalField("Description", current.Description);
 
-        var payload = new
+        var category = new
         {
             categoryId = selected.CategoryId,
             name,
             description,
         };
+        var payload = new { payload = category };
         await ApiClient.PutAsync(http, $"/api/categories/{selected.CategoryId}", payload);
     }
 
@@ -255,7 +253,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
             TotalCount = response.TotalCount
         };
 
-        var selected = TableRenderer.SelectFromTable(response.Data, "Select a Category to Delete", pagination.IndexOffset);
+        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category to Delete", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 

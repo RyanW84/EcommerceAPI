@@ -72,6 +72,57 @@ public static class TableRenderer
     }
 
     /// <summary>
+    /// Creates a selection prompt that shows index and item name together.
+    /// More user-friendly than selecting by number alone.
+    /// </summary>
+    public static T? SelectFromPrompt<T>(
+        IList<T> items,
+        string title,
+        int indexOffset = 0,
+        string nameProperty = "Name"
+    )
+        where T : class
+    {
+        if (items.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No items to display[/]");
+            return null;
+        }
+
+        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var nameProp = properties.FirstOrDefault(p =>
+            p.Name.Equals(nameProperty, StringComparison.OrdinalIgnoreCase));
+
+        var choices = new List<string>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            var index = indexOffset + i + 1;
+            var nameValue = nameProp?.GetValue(items[i])?.ToString() ?? "Unknown";
+            choices.Add($"{index} - {nameValue}");
+        }
+        choices.Add("Cancel");
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"[green]{title}[/]")
+                .PageSize(10)
+                .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
+                .AddChoices(choices)
+        );
+
+        if (choice == "Cancel")
+            return null;
+
+        // Extract the index from the choice string (e.g., "1 - Product Name" -> 1)
+        if (int.TryParse(choice.Split('-')[0].Trim(), out int selectedIndex))
+        {
+            return items[selectedIndex - indexOffset - 1];
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Displays a collection of items as a formatted table without selection.
     /// </summary>
     public static void DisplayTable<T>(IList<T> items, string title, int indexOffset = 0, params string[] excludeColumns)
