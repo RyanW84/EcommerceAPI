@@ -164,26 +164,25 @@ public class SalesMenuHandler : IConsoleMenuHandler
 
     private static async Task UpdateAsync(HttpClient http)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", "1")
-            .Add("pageSize", "32")
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, "/api/sales?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No sales available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<SaleDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Sale to Update",
+            sale => $"{sale.SaleDate:yyyy-MM-dd HH:mm} - {sale.CustomerName}"
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Sale to Update", pagination.IndexOffset, "CustomerName");
         if (selected == null)
             return;
 
@@ -215,30 +214,29 @@ public class SalesMenuHandler : IConsoleMenuHandler
 
     private static async Task DeleteAsync(HttpClient http)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", "1")
-            .Add("pageSize", "32")
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<SaleDto>(http, "/api/sales?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No sales available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<SaleDto>(http, $"/api/sales?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<SaleDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Sale to Delete",
+            sale => $"{sale.SaleDate:yyyy-MM-dd HH:mm} - {sale.CustomerName}"
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Sale to Delete", pagination.IndexOffset, "CustomerName");
         if (selected == null)
             return;
 
-        if (!AnsiConsole.Confirm($"[red]Are you sure you want to delete the sale for '{selected.CustomerName}'?[/]"))
+        if (!AnsiConsole.Confirm($"[red]Are you sure you want to delete the sale from '{selected.SaleDate:yyyy-MM-dd HH:mm}' for '{selected.CustomerName}'?[/]"))
             return;
 
         await ApiClient.DeleteAsync(http, $"/api/sales/{selected.SaleId}");
@@ -263,7 +261,18 @@ public class SalesMenuHandler : IConsoleMenuHandler
                 break;
             }
 
-            var selectedProduct = TableRenderer.SelectFromPrompt(productsResponse.Data, "Select a Product", 0, "Name");
+            var selectedProduct = await TableRenderer.SelectFromPromptAsync(
+                async (pageNum) =>
+                {
+                    var pageResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product?page={pageNum}&pageSize=32");
+                    return pageResponse?.Data ?? new List<ProductDto>();
+                },
+                productsResponse.TotalCount,
+                32,
+                "Select a Product",
+                product => product.Name
+            );
+
             if (selectedProduct == null)
                 continue;
 

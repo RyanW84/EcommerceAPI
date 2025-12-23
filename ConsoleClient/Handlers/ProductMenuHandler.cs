@@ -44,31 +44,29 @@ public class ProductMenuHandler : IConsoleMenuHandler
     private static async Task GetByIdAsync(HttpClient http)
     {
         // First, show a list for the user to select from
-        var (page, pageSize) = (1, 32);
-        var qs = new QueryStringBuilder()
-            .Add("page", page.ToString())
-            .Add("pageSize", pageSize.ToString())
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, "/api/product?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No products available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = page,
-            PageSize = pageSize,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<ProductDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Product",
+            product => product.Name
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product", pagination.IndexOffset, "Name");
         if (selected != null)
         {
             // Display the selected product directly from the list
-            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Product Details", pagination.IndexOffset, "CategoryId");
+            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Product Details", 0, "CategoryId");
         }
     }
 
@@ -211,7 +209,18 @@ public class ProductMenuHandler : IConsoleMenuHandler
             return;
         }
 
-        var selectedCategory = TableRenderer.SelectFromPrompt(categoriesResponse.Data, "Select a Category", 0, "Name");
+        var selectedCategory = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<CategoryDto>();
+            },
+            categoriesResponse.TotalCount,
+            32,
+            "Select a Category",
+            cat => cat.Name
+        );
+
         if (selectedCategory == null)
             return;
 
@@ -239,7 +248,7 @@ public class ProductMenuHandler : IConsoleMenuHandler
         // Show list for selection
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "50")
+            .Add("pageSize", "32")
             .Build();
 
         var response = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product{qs}");
@@ -249,14 +258,18 @@ public class ProductMenuHandler : IConsoleMenuHandler
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<ProductDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Product to Update",
+            product => product.Name
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product to Update", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 
@@ -283,7 +296,18 @@ public class ProductMenuHandler : IConsoleMenuHandler
             var changeCategoryChoice = AnsiConsole.Confirm("Change category?", false);
             if (changeCategoryChoice)
             {
-                var selectedCategory = TableRenderer.SelectFromPrompt(categoriesResponse.Data, "Select a Category", 0, "Name");
+                var selectedCategory = await TableRenderer.SelectFromPromptAsync(
+                    async (pageNum) =>
+                    {
+                        var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                        return pageResponse?.Data ?? new List<CategoryDto>();
+                    },
+                    categoriesResponse.TotalCount,
+                    32,
+                    "Select a Category",
+                    cat => cat.Name
+                );
+
                 if (selectedCategory != null)
                     categoryId = selectedCategory.CategoryId;
             }
@@ -322,14 +346,17 @@ public class ProductMenuHandler : IConsoleMenuHandler
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
-
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Product to Delete", pagination.IndexOffset, "Name");
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<ProductDto>(http, $"/api/product?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<ProductDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Product to Delete",
+            product => product.Name
+        );
         if (selected == null)
             return;
 

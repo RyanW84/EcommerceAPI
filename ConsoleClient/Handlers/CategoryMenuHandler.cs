@@ -132,29 +132,28 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
     private static async Task GetByIdAsync(HttpClient http)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", "1")
-            .Add("pageSize", "32")
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 50,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<CategoryDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Category",
+            cat => cat.Name
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category", pagination.IndexOffset, "Name");
         if (selected != null)
         {
-            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Category Details", pagination.IndexOffset);
+            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Category Details", 0);
         }
     }
 
@@ -186,24 +185,28 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     {
         var qs = new QueryStringBuilder()
             .Add("page", "1")
-            .Add("pageSize", "32")
+            .Add("pageSize", "256")
             .Build();
 
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<CategoryDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Category to Update",
+            cat => cat.Name
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category to Update", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 
@@ -234,26 +237,25 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
     private static async Task DeleteAsync(HttpClient http)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", "1")
-            .Add("pageSize", "32")
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
             return;
         }
 
-        var pagination = new PaginationState
-        {
-            CurrentPage = 1,
-            PageSize = 32,
-            TotalCount = response.TotalCount
-        };
+        var selected = await TableRenderer.SelectFromPromptAsync(
+            async (pageNum) =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                return pageResponse?.Data ?? new List<CategoryDto>();
+            },
+            response.TotalCount,
+            32,
+            "Select a Category to Delete",
+            cat => cat.Name
+        );
 
-        var selected = TableRenderer.SelectFromPrompt(response.Data, "Select a Category to Delete", pagination.IndexOffset, "Name");
         if (selected == null)
             return;
 

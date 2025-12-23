@@ -18,16 +18,19 @@ public class DatabaseInitializerHostedService(IServiceProvider services,
 
         try
         {
-            if (env.IsDevelopment())
+            // For development, use a reset flag instead of always deleting the database
+            // This avoids the expensive EnsureDeletedAsync call on every startup
+            // Only reset if the environment variable is explicitly set
+            if (env.IsDevelopment() && IsResetRequested())
             {
-                logger.LogInformation("Development mode: ensuring clean database before migration...");
+                logger.LogInformation("Development mode: resetting database as requested...");
                 await db.Database.EnsureDeletedAsync(cancellationToken);
             }
 
             await db.Database.MigrateAsync(cancellationToken);
             logger.LogInformation("Database migrations applied.");
 
-            if (env.IsDevelopment())
+            if (env.IsDevelopment() && IsResetRequested())
             {
                 db.SeedData();
                 await db.SaveChangesAsync(cancellationToken);
@@ -42,4 +45,15 @@ public class DatabaseInitializerHostedService(IServiceProvider services,
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// Checks if database reset is requested via environment variable.
+    /// Set ECOMMERCE_RESET_DB=true to reset the database on startup.
+    /// </summary>
+    private static bool IsResetRequested()
+    {
+        var resetEnv = Environment.GetEnvironmentVariable("ECOMMERCE_RESET_DB");
+        return resetEnv?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+    }
 }
+

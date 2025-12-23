@@ -165,6 +165,104 @@ public static class TableRenderer
     }
 
     /// <summary>
+    /// Creates a selection prompt with a custom display function for formatting items.
+    /// Allows flexible display of item information (e.g., date + customer name for sales).
+    /// </summary>
+    public static T? SelectFromPrompt<T>(
+        IList<T> items,
+        string title,
+        int indexOffset,
+        Func<T, string> displayFormatter
+    )
+        where T : class
+    {
+        if (items.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No items to display[/]");
+            return null;
+        }
+
+        const int pageSize = 32;
+        int currentPage = 0;
+        int totalPages = (items.Count + pageSize - 1) / pageSize;
+
+        while (true)
+        {
+            // Calculate range for current page
+            int startIndex = currentPage * pageSize;
+            int endIndex = Math.Min(startIndex + pageSize, items.Count);
+
+            var choices = new List<string>();
+
+            // Add items for this page
+            for (int i = startIndex; i < endIndex; i++)
+            {
+                var index = indexOffset + i + 1;
+                var displayText = displayFormatter(items[i]);
+                choices.Add($"{index} - {displayText}");
+            }
+
+            // Add navigation options if multiple pages
+            if (totalPages > 1)
+            {
+                choices.Add("---");
+                if (currentPage > 0)
+                    choices.Add("< Previous Page");
+                if (currentPage < totalPages - 1)
+                    choices.Add("Next Page >");
+                choices.Add("Cancel");
+            }
+            else
+            {
+                choices.Add("Cancel");
+            }
+
+            string pageIndicator = totalPages > 1 ? $" (Page {currentPage + 1}/{totalPages})" : "";
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title($"[green]{title}{pageIndicator}[/]")
+                    .PageSize(Math.Min(40, choices.Count))
+                    .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
+                    .AddChoices(choices)
+            );
+
+            if (choice == "Cancel" || choice == "---")
+                return null;
+
+            if (choice == "< Previous Page")
+            {
+                currentPage--;
+                continue;
+            }
+
+            if (choice == "Next Page >")
+            {
+                currentPage++;
+                continue;
+            }
+
+            // Extract the index from the choice string (e.g., "1 - 2025-01-15 14:30 - John Doe" -> 1)
+            // Only parse the first number before the dash
+            var firstPart = choice.Split('-')[0].Trim();
+            if (int.TryParse(firstPart, out int selectedDisplayIndex))
+            {
+                // Convert from displayed index (1-based, with indexOffset) to array index (0-based)
+                // selectedDisplayIndex is what user sees (e.g., "33" on page 2)
+                // indexOffset accounts for previous pages (e.g., 32 for page 2)
+                // We need to map back to the items array
+                int actualIndex = selectedDisplayIndex - indexOffset - 1;
+
+                if (actualIndex >= 0 && actualIndex < items.Count)
+                {
+                    return items[actualIndex];
+                }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Displays a collection of items as a formatted table without selection.
     /// </summary>
     public static void DisplayTable<T>(IList<T> items, string title, int indexOffset = 0, params string[] excludeColumns)
@@ -241,6 +339,111 @@ public static class TableRenderer
         props.AddRange(allProps.OrderBy(p => p.Name));
 
         return props;
+    }
+
+    /// <summary>
+    /// Async selection prompt with dynamic pagination support.
+    /// Fetches pages from the API on demand as the user navigates.
+    /// </summary>
+    public static async Task<T?> SelectFromPromptAsync<T>(
+        Func<int, Task<List<T>>> fetchPageAsync,
+        int totalCount,
+        int pageSize,
+        string title,
+        Func<T, string> displayFormatter
+    )
+        where T : class
+    {
+        if (totalCount == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No items to display[/]");
+            return null;
+        }
+
+        int currentPage = 1;
+        int totalPages = (totalCount + pageSize - 1) / pageSize;
+        var currentPageItems = new List<T>();
+
+        while (true)
+        {
+            // Fetch current page if not already loaded
+            if (currentPageItems.Count == 0)
+            {
+                currentPageItems = await fetchPageAsync(currentPage);
+                if (currentPageItems.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No items on this page[/]");
+                    return null;
+                }
+            }
+
+            var choices = new List<string>();
+            int indexOffset = (currentPage - 1) * pageSize;
+
+            // Add items for this page
+            for (int i = 0; i < currentPageItems.Count; i++)
+            {
+                var displayIndex = indexOffset + i + 1;
+                var displayText = displayFormatter(currentPageItems[i]);
+                choices.Add($"{displayIndex} - {displayText}");
+            }
+
+            // Add navigation options if multiple pages
+            if (totalPages > 1)
+            {
+                choices.Add("---");
+                if (currentPage > 1)
+                    choices.Add("< Previous Page");
+                if (currentPage < totalPages)
+                    choices.Add("Next Page >");
+                choices.Add("Cancel");
+            }
+            else
+            {
+                choices.Add("Cancel");
+            }
+
+            string pageIndicator = totalPages > 1 ? $" (Page {currentPage}/{totalPages})" : "";
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title($"[green]{title}{pageIndicator}[/]")
+                    .PageSize(Math.Min(40, choices.Count))
+                    .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
+                    .AddChoices(choices)
+            );
+
+            if (choice == "Cancel" || choice == "---")
+                return null;
+
+            if (choice == "< Previous Page")
+            {
+                currentPage--;
+                currentPageItems.Clear();
+                continue;
+            }
+
+            if (choice == "Next Page >")
+            {
+                currentPage++;
+                currentPageItems.Clear();
+                continue;
+            }
+
+            // Extract the index from the choice string
+            var firstPart = choice.Split('-')[0].Trim();
+            if (int.TryParse(firstPart, out int selectedDisplayIndex))
+            {
+                // Map back to array index on current page
+                int localIndex = selectedDisplayIndex - indexOffset - 1;
+
+                if (localIndex >= 0 && localIndex < currentPageItems.Count)
+                {
+                    return currentPageItems[localIndex];
+                }
+            }
+
+            return null;
+        }
     }
 
     /// <summary>
