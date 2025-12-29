@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
 using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Models;
@@ -285,8 +284,8 @@ public class ProductMenuHandler : IConsoleMenuHandler
 
         var name = PromptOptionalField("Product Name", current.Name);
         var description = PromptOptionalField("Description", current.Description);
-        var priceStr = AnsiConsole.Ask<string>("Price (leave blank to keep):", string.Empty);
-        var stockStr = AnsiConsole.Ask<string>("Stock (leave blank to keep):", string.Empty);
+        var priceStr = AnsiConsole.Ask("Price (leave blank to keep):", string.Empty);
+        var stockStr = AnsiConsole.Ask("Stock (leave blank to keep):", string.Empty);
 
         // Show category selection list instead of ID prompt
         var categoriesResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");

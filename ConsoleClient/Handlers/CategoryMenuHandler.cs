@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ECommerceApp.ConsoleClient.Helpers;
 using ECommerceApp.ConsoleClient.Interfaces;
 using ECommerceApp.ConsoleClient.Models;
@@ -153,7 +152,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
         if (selected != null)
         {
-            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Category Details", 0);
+            TableRenderer.DisplayTable(new[] { selected }.ToList(), "Category Details");
         }
     }
 
@@ -163,7 +162,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var response = await ApiClient.FetchEntityAsync<CategoryDto>(http, $"/api/categories/name/{Uri.EscapeDataString(name)}");
         if (response?.Data != null)
         {
-            TableRenderer.DisplayTable(new[] { response.Data }.ToList(), "Category Details", 0);
+            TableRenderer.DisplayTable(new[] { response.Data }.ToList(), "Category Details");
         }
         else
         {
@@ -267,7 +266,7 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
     private static string? PromptOptionalField(string label, string? currentValue)
     {
-        var input = AnsiConsole.Ask<string>($"{label} (leave blank to keep):", string.Empty);
+        var input = AnsiConsole.Ask($"{label} (leave blank to keep):", string.Empty);
         return string.IsNullOrWhiteSpace(input) ? currentValue : input;
     }
 
