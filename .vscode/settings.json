@@ -1,0 +1,11 @@
+{
+    "FSharp.dotnetRoot": "/home/rweavers/.dotnet",
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash",
+            "args": [],
+            "icon": "terminal-bash"
+        }
+    }
+}
