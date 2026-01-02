@@ -1,0 +1,15 @@
+.git
+.gitignore
+.dockerignore
+docker-compose.yml
+.env
+.idea
+.vscode
+bin
+obj
+.vs
+*.user
+*.suo
+logs
+test
+tests

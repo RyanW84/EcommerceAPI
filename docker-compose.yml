@@ -19,6 +19,27 @@ services:
     networks:
       - ecommerce-network
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecommerce-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
+      DATABASE_CONNECTION_STRING: "${DATABASE_CONNECTION_STRING}"
+      ASPNETCORE_URLS: "http://+:80;https://+:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
+
 volumes:
   ecommerce-mssql-data:
     driver: local
