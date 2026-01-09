@@ -56,7 +56,9 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         if (applyFilters)
         {
             search = ConsoleInputHelper.PromptOptional("Search");
-            var (sortByResult, sortDirectionResult) = PromptSortOptions(new[] { "(none)", "name", "createdat" });
+            var (sortByResult, sortDirectionResult) = PromptSortOptions(
+                new[] { "(none)", "name", "createdat" }
+            );
             sortBy = sortByResult;
             sortDirection = sortDirectionResult;
         }
@@ -67,71 +69,121 @@ public class CategoryMenuHandler : IConsoleMenuHandler
             PageSize = pageSize,
             Search = search,
             SortBy = sortBy,
-            SortDirection = sortDirection
+            SortDirection = sortDirection,
         };
 
         await BuildAndExecuteListQueryWithPagination(http, query);
     }
 
-    private static async Task BuildAndExecuteListQueryWithPagination(HttpClient http, CategoryListQuery query)
+    private static async Task BuildAndExecuteListQueryWithPagination(
+        HttpClient http,
+        CategoryListQuery query
+    )
     {
         while (true)
         {
-            var qs = new QueryStringBuilder()
-                .Add("page", query.Page.ToString())
-                .Add("pageSize", query.PageSize.ToString())
-                .Add("search", query.Search)
-                .Add("sortBy", query.SortBy == "(none)" || query.SortBy == null ? null : query.SortBy)
-                .Add("sortDirection", query.SortDirection)
-                .Build();
-
-            var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
-            if (response?.Data != null && response.Data.Count > 0)
-            {
-                var pagination = new PaginationState
-                {
-                    CurrentPage = query.Page,
-                    PageSize = query.PageSize,
-                    TotalCount = response.TotalCount
-                };
-
-                TableRenderer.DisplayTable(
-                    response.Data,
-                    $"Categories (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
-                    pagination.IndexOffset
-                );
-
-                // Show pagination navigation
-                var navChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                    .Title("Navigation:")
-                    .AddChoices(pagination.GetNavigationChoices()));
-
-                if (navChoice == "Back to Menu")
-                    break;
-                else if (navChoice == "Next Page")
-                    query.Page++;
-                else if (navChoice == "Previous Page")
-                    query.Page--;
-                else if (navChoice == "Jump to Page")
-                {
-                    int targetPage = ConsoleInputHelper.PromptPositiveInt($"Enter page number (1-{pagination.TotalPages})");
-                    if (targetPage >= 1 && targetPage <= pagination.TotalPages)
-                        query.Page = targetPage;
-                    else
-                        AnsiConsole.MarkupLine($"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]");
-                }
-            }
-            else
+            var response = await FetchCategoryPageAsync(http, query);
+            if (!HasCategoryResults(response))
             {
                 AnsiConsole.MarkupLine("[yellow]No categories found[/]");
                 break;
             }
+
+            var pagination = new PaginationState
+            {
+                CurrentPage = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = response!.TotalCount,
+            };
+
+            TableRenderer.DisplayTable(
+                response.Data!,
+                $"Categories (Page {pagination.CurrentPage}/{pagination.TotalPages}, Total: {pagination.TotalCount})",
+                pagination.IndexOffset
+            );
+
+            if (!HandlePaginationNavigation(query, pagination))
+                break;
         }
+    }
+
+    private static async Task<PaginatedResponse<CategoryDto>?> FetchCategoryPageAsync(
+        HttpClient http,
+        CategoryListQuery query
+    )
+    {
+        var qs = new QueryStringBuilder()
+            .Add("page", query.Page.ToString())
+            .Add("pageSize", query.PageSize.ToString())
+            .Add("search", query.Search)
+            .Add("sortBy", query.SortBy == "(none)" || query.SortBy == null ? null : query.SortBy)
+            .Add("sortDirection", query.SortDirection)
+            .Build();
+
+        return await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories{qs}");
+    }
+
+    private static bool HandlePaginationNavigation(
+        CategoryListQuery query,
+        PaginationState pagination
+    )
+    {
+        var navChoice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Navigation:")
+                .AddChoices(pagination.GetNavigationChoices())
+        );
+
+        return navChoice switch
+        {
+            "Back to Menu" => false,
+            "Next Page" => IncrementPage(query),
+            "Previous Page" => DecrementPage(query),
+            "Jump to Page" => JumpToPage(query, pagination),
+            _ => true,
+        };
+    }
+
+    private static bool JumpToPage(CategoryListQuery query, PaginationState pagination)
+    {
+        int targetPage = ConsoleInputHelper.PromptPositiveInt(
+            $"Enter page number (1-{pagination.TotalPages})"
+        );
+        if (targetPage >= 1 && targetPage <= pagination.TotalPages)
+        {
+            query.Page = targetPage;
+            return true;
+        }
+
+        AnsiConsole.MarkupLine(
+            $"[red]Invalid page number. Valid range: 1-{pagination.TotalPages}[/]"
+        );
+        return true;
+    }
+
+    private static bool IncrementPage(CategoryListQuery query)
+    {
+        query.Page++;
+        return true;
+    }
+
+    private static bool DecrementPage(CategoryListQuery query)
+    {
+        query.Page--;
+        return true;
+    }
+
+    private static bool HasCategoryResults(PaginatedResponse<CategoryDto>? response)
+    {
+        return response?.Data != null && response.Data.Count > 0;
     }
 
     private static async Task GetByIdAsync(HttpClient http)
     {
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+            http,
+            "/api/categories?page=1&pageSize=32"
+        );
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
@@ -141,7 +193,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var selected = await TableRenderer.SelectFromPromptAsync(
             async (pageNum) =>
             {
-                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+                    http,
+                    $"/api/categories?page={pageNum}&pageSize=32"
+                );
                 return pageResponse?.Data ?? new List<CategoryDto>();
             },
             response.TotalCount,
@@ -159,7 +214,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
     private static async Task GetByNameAsync(HttpClient http)
     {
         var name = ConsoleInputHelper.PromptRequired("Name");
-        var response = await ApiClient.FetchEntityAsync<CategoryDto>(http, $"/api/categories/name/{Uri.EscapeDataString(name)}");
+        var response = await ApiClient.FetchEntityAsync<CategoryDto>(
+            http,
+            $"/api/categories/name/{Uri.EscapeDataString(name)}"
+        );
         if (response?.Data != null)
         {
             TableRenderer.DisplayTable(new[] { response.Data }.ToList(), "Category Details");
@@ -182,61 +240,103 @@ public class CategoryMenuHandler : IConsoleMenuHandler
 
     private static async Task UpdateAsync(HttpClient http)
     {
-        var qs = new QueryStringBuilder()
-            .Add("page", "1")
-            .Add("pageSize", "256")
-            .Build();
-
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
-        if (response?.Data == null || response.Data.Count == 0)
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+            http,
+            "/api/categories?page=1&pageSize=32"
+        );
+        if (!HasCategoryResults(response))
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
             return;
         }
 
-        var selected = await TableRenderer.SelectFromPromptAsync(
-            async (pageNum) =>
-            {
-                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
-                return pageResponse?.Data ?? new List<CategoryDto>();
-            },
-            response.TotalCount,
-            32,
-            "Select a Category to Update",
-            cat => cat.Name
-        );
-
+        var selected = await SelectCategoryAsync(http, response!.TotalCount);
         if (selected == null)
             return;
 
-        var categoryResponse = await ApiClient.FetchEntityAsync<CategoryDto>(http, $"/api/categories/{selected.CategoryId}");
-        if (categoryResponse?.Data == null)
+        var current = await FetchCategoryDetailsAsync(http, selected.CategoryId);
+        if (current == null)
         {
             ConsoleInputHelper.DisplayError("Category not found");
             return;
         }
 
-        var current = categoryResponse.Data;
-        AnsiConsole.MarkupLine($"[yellow]Current values:[/]");
+        DisplayCurrentCategory(current);
+        var (name, description) = PromptCategoryUpdates(current);
+        await ApiClient.PutAsync(
+            http,
+            $"/api/categories/{selected.CategoryId}",
+            BuildCategoryUpdatePayload(selected.CategoryId, name, description)
+        );
+    }
+
+    private static async Task<CategoryDto?> FetchCategoryDetailsAsync(
+        HttpClient http,
+        int categoryId
+    )
+    {
+        var categoryResponse = await ApiClient.FetchEntityAsync<CategoryDto>(
+            http,
+            $"/api/categories/{categoryId}"
+        );
+        return categoryResponse?.Data;
+    }
+
+    private static async Task<CategoryDto?> SelectCategoryAsync(HttpClient http, int totalCount)
+    {
+        return await TableRenderer.SelectFromPromptAsync(
+            async pageNum =>
+            {
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+                    http,
+                    $"/api/categories?page={pageNum}&pageSize=32"
+                );
+                return pageResponse?.Data ?? new List<CategoryDto>();
+            },
+            totalCount,
+            32,
+            "Select a Category to Update",
+            cat => cat.Name
+        );
+    }
+
+    private static void DisplayCurrentCategory(CategoryDto current)
+    {
+        AnsiConsole.MarkupLine("[yellow]Current values:[/]");
         AnsiConsole.MarkupLine($"  Name: {current.Name}");
         AnsiConsole.MarkupLine($"  Description: {current.Description}");
+    }
 
+    private static (string? Name, string? Description) PromptCategoryUpdates(CategoryDto current)
+    {
         var name = PromptOptionalField("Category Name", current.Name);
         var description = PromptOptionalField("Description", current.Description);
+        return (name, description);
+    }
 
-        var category = new
+    private static object BuildCategoryUpdatePayload(
+        int categoryId,
+        string? name,
+        string? description
+    )
+    {
+        return new
         {
-            categoryId = selected.CategoryId,
-            name,
-            description,
+            payload = new
+            {
+                categoryId,
+                name,
+                description,
+            },
         };
-        var payload = new { payload = category };
-        await ApiClient.PutAsync(http, $"/api/categories/{selected.CategoryId}", payload);
     }
 
     private static async Task DeleteAsync(HttpClient http)
     {
-        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, "/api/categories?page=1&pageSize=32");
+        var response = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+            http,
+            "/api/categories?page=1&pageSize=32"
+        );
         if (response?.Data == null || response.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No categories available[/]");
@@ -246,7 +346,10 @@ public class CategoryMenuHandler : IConsoleMenuHandler
         var selected = await TableRenderer.SelectFromPromptAsync(
             async (pageNum) =>
             {
-                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(http, $"/api/categories?page={pageNum}&pageSize=32");
+                var pageResponse = await ApiClient.FetchPaginatedAsync<CategoryDto>(
+                    http,
+                    $"/api/categories?page={pageNum}&pageSize=32"
+                );
                 return pageResponse?.Data ?? new List<CategoryDto>();
             },
             response.TotalCount,

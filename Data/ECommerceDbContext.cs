@@ -25,6 +25,7 @@ public class ECommerceDbContext(DbContextOptions<ECommerceDbContext> options) : 
 
     private static void ConfigureGlobalQueryFilters(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Category>().HasQueryFilter(c => !c.IsDeleted);
         modelBuilder.Entity<Product>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<SaleItem>().HasQueryFilter(si => !si.Product!.IsDeleted);
     }

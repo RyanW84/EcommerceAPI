@@ -12,8 +12,5 @@ public class SaleItemValidator : AbstractValidator<SaleItem>
 
         RuleFor(x => x.Quantity)
             .GreaterThan(0).WithMessage("Quantity must be greater than 0.");
-
-        RuleFor(x => x.UnitPrice)
-            .GreaterThan(0).WithMessage("Unit price must be greater than 0.");
     }
 }

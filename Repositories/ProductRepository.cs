@@ -241,6 +241,7 @@ namespace ECommerceApp.RyanW84.Repositories
         {
             existing.Name = entity.Name;
             existing.Description = entity.Description;
+            existing.Price = entity.Price;
             existing.Stock = entity.Stock;
             existing.IsActive = entity.IsActive;
             existing.CategoryId = entity.CategoryId;
