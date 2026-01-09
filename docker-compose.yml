@@ -3,7 +3,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ecommerce-mssql
     environment:
-      ACCEPT_EULA: "${ACCEPT_EULA}"
+      ACCEPT_EULA: "Y"
       SA_PASSWORD: "${SA_PASSWORD}"
       MSSQL_PID: ${MSSQL_PID:-Developer}
     ports:
@@ -26,7 +26,9 @@ services:
     container_name: ecommerce-api
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
-      DATABASE_CONNECTION_STRING: "${DATABASE_CONNECTION_STRING}"
+      ConnectionStrings__DefaultConnection: "${ConnectionStrings__DefaultConnection}"
+      DbUser: "${DbUser}"
+      DbPassword: "${DbPassword}"
       ASPNETCORE_URLS: "http://+:80;https://+:443"
     ports:
       - "80:80"
