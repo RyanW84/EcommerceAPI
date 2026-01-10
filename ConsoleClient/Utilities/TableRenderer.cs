@@ -300,7 +300,8 @@ public static class TableRenderer
     )
         where T : class
     {
-        int currentPage = 1;
+        // Use 0-based page index internally to align with BuildChoices/HandleNavigation logic.
+        int currentPageIndex = 0;
         int totalPages = (totalCount + pageSize - 1) / pageSize;
         var currentPageItems = new List<T>();
 
@@ -308,7 +309,7 @@ public static class TableRenderer
         {
             if (currentPageItems.Count == 0)
             {
-                currentPageItems = await fetchPageAsync(currentPage);
+                currentPageItems = await fetchPageAsync(currentPageIndex + 1);
                 if (currentPageItems.Count == 0)
                 {
                     AnsiConsole.MarkupLine("[yellow]No items on this page[/]");
@@ -316,34 +317,33 @@ public static class TableRenderer
                 }
             }
 
-            int indexOffset = (currentPage - 1) * pageSize;
+            int indexOffset = currentPageIndex * pageSize;
             var choices = BuildChoices(
                 currentPageItems,
                 displayFormatter,
                 indexOffset,
                 0,
                 currentPageItems.Count,
-                currentPage - 1,
+                currentPageIndex,
                 totalPages
             );
-            var choice = PromptSelection(title, choices, currentPage, totalPages);
+            var choice = PromptSelection(title, choices, currentPageIndex + 1, totalPages);
 
             var action = ParseNavigation(choice);
             if (action == PagingAction.Cancel)
                 return null;
 
-            if (HandleNavigation(ref currentPage, totalPages, action))
+            if (HandleNavigation(ref currentPageIndex, totalPages, action))
             {
                 currentPageItems.Clear();
                 continue;
             }
 
-            var selectedIndex = TryExtractIndex(choice, indexOffset);
-            if (selectedIndex.HasValue)
+            var localIndex = TryExtractIndex(choice, indexOffset);
+            if (localIndex.HasValue)
             {
-                int localIndex = selectedIndex.Value - indexOffset;
-                if (localIndex >= 0 && localIndex < currentPageItems.Count)
-                    return currentPageItems[localIndex];
+                if (localIndex.Value >= 0 && localIndex.Value < currentPageItems.Count)
+                    return currentPageItems[localIndex.Value];
             }
 
             return null;
