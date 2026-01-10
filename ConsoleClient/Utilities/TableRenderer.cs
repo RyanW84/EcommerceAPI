@@ -397,10 +397,12 @@ public static class TableRenderer
     )
     {
         string pageIndicator = totalPages > 1 ? $" (Page {currentPage}/{totalPages})" : "";
+        // Spectre.Console requires page size >= 3; guard small choice lists (e.g., 1 item + Cancel).
+        var promptPageSize = Math.Max(3, Math.Min(40, choices.Count));
         return AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title($"[green]{title}{pageIndicator}[/]")
-                .PageSize(Math.Min(40, choices.Count))
+                .PageSize(promptPageSize)
                 .MoreChoicesText("[grey](Use arrow keys to navigate)[/]")
                 .AddChoices(choices)
         );
