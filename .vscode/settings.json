@@ -41,5 +41,8 @@
         "totalamount",
         "usersecrets",
         "xzfv"
-    ]
+    ],
+    "terminal.external.linuxExec": "ghostty",
+    "terminal.integrated.defaultProfile.linux": "ghostty",
+    "csharp.debug.console": "integratedTerminal"
 }
