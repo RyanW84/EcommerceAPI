@@ -24,6 +24,8 @@
         "mykeyvault",
         "nterface",
         "packagespec",
+        "prerequest",
+        "previewlanguage",
         "Pylint",
         "QDNET",
         "qodana",

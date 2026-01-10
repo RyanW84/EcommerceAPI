@@ -144,8 +144,7 @@ public static class DatabaseSeeder
             "Office Chair",
             "Desk",
             "Bookshelf",
-            "Board Game",
-            "Action Figure",
+            "Board Game", "Action Figure",
         };
     }
 

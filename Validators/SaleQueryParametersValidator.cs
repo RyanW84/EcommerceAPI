@@ -9,16 +9,16 @@ public class SaleQueryParametersValidator : AbstractValidator<SaleQueryParameter
     [
         "saledate",
         "totalamount",
-        "customername"
+        "customername",
     ];
 
     public SaleQueryParametersValidator()
     {
-        RuleFor(x => x.Page)
-            .GreaterThan(0).WithMessage("Page must be greater than zero.");
+        RuleFor(x => x.Page).GreaterThan(0).WithMessage("Page must be greater than zero.");
 
         RuleFor(x => x.PageSize)
-            .InclusiveBetween(1, 100).WithMessage("Page size must be between 1 and 100.");
+            .InclusiveBetween(1, 100)
+            .WithMessage("Page size must be between 1 and 100.");
 
         RuleFor(x => x.StartDate)
             .LessThanOrEqualTo(x => x.EndDate!.Value)
@@ -43,11 +43,15 @@ public class SaleQueryParametersValidator : AbstractValidator<SaleQueryParameter
         RuleFor(x => x.SortBy)
             .Must(sortBy => AllowedSortColumns.Contains(sortBy!.ToLowerInvariant()))
             .When(x => !string.IsNullOrWhiteSpace(x.SortBy))
-            .WithMessage($"Sort by must be one of the following values: {string.Join(", ", AllowedSortColumns)}.");
+            .WithMessage(
+                $"Sort by must be one of the following values: {string.Join(", ", AllowedSortColumns)}."
+            );
     }
 
     private static bool BeValidSortDirection(string? direction) =>
-        direction is not null &&
-        (direction.Equals("asc", StringComparison.OrdinalIgnoreCase) ||
-         direction.Equals("desc", StringComparison.OrdinalIgnoreCase));
+        direction is not null
+        && (
+            direction.Equals("asc", StringComparison.OrdinalIgnoreCase)
+            || direction.Equals("desc", StringComparison.OrdinalIgnoreCase)
+        );
 }
