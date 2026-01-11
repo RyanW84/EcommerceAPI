@@ -15,6 +15,7 @@
         "enabledelayedexpansion",
         "ependency",
         "findstr",
+        "HATEOAS",
         "iskov",
         "Liskov",
         "localdb",
