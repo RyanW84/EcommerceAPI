@@ -18,6 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../ECommerceApp.RyanW84.csproj" />
     <ProjectReference Include="../../ConsoleClient/ECommerceApp.ConsoleClient.csproj" />
   </ItemGroup>

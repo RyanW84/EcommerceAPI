@@ -66,7 +66,9 @@ public class Program
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-                options.JsonSerializerOptions.WriteIndented = true;
+                options.JsonSerializerOptions.WriteIndented = false; // Reduce payload size in production
+                options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+                options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
             });
 
         builder
@@ -87,9 +89,13 @@ public class Program
         builder.Services.AddOpenApi();
 
         string connectionString = GetConnectionString(builder.Configuration);
-        builder.Services.AddDbContext<Data.ECommerceDbContext>(options =>
-            ConfigureDbContext(options, connectionString)
-        );
+        builder.Services.AddDbContextPool<Data.ECommerceDbContext>(options =>
+        {
+            ConfigureDbContext(options, connectionString);
+            options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
+            options.EnableDetailedErrors(builder.Environment.IsDevelopment());
+            options.ConfigureWarnings(w => w.Throw(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning));
+        }, poolSize: 128);
 
         // Options
         builder.Services.AddOptions();
@@ -234,11 +240,21 @@ public class Program
             && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
             && !connectionString.Contains("Data Source=(localdb)", StringComparison.OrdinalIgnoreCase))
         {
-            options.UseSqlite(connectionString);
+            options.UseSqlite(connectionString, sqliteOptions =>
+            {
+                sqliteOptions.CommandTimeout(30);
+            });
         }
         else
         {
-            options.UseSqlServer(connectionString);
+            options.UseSqlServer(connectionString, sqlServerOptions =>
+            {
+                sqlServerOptions.CommandTimeout(30);
+                sqlServerOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorNumbersToAdd: null);
+            });
         }
     }
 }

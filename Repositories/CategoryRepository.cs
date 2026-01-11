@@ -18,9 +18,7 @@ public class CategoryRepository(ECommerceDbContext db) : ICategoryRepository
     {
         if (string.IsNullOrWhiteSpace(categoryName))
             return false;
-        return await _db
-            .Categories.AsNoTracking()
-            .AnyAsync(c => c.Name == categoryName, cancellationToken);
+        return await CompiledQueries.CategoryExistsByName(_db, categoryName, cancellationToken);
     }
 
     public async Task<ApiResponseDto<Category?>> GetByIdAsync(
@@ -30,11 +28,11 @@ public class CategoryRepository(ECommerceDbContext db) : ICategoryRepository
     {
         try
         {
-            Category? category = await _db
-                .Categories.AsNoTracking()
-                .Include(c => c.Products)
-                .Include(c => c.Sales)
-                .FirstOrDefaultAsync(c => c.CategoryId == id, cancellationToken);
+            Category? category = await CompiledQueries.GetCategoryByIdWithRelations(
+                _db,
+                id,
+                cancellationToken
+            );
 
             return new ApiResponseDto<Category?>
             {
@@ -65,6 +63,7 @@ public class CategoryRepository(ECommerceDbContext db) : ICategoryRepository
         {
             Category? category = await _db
                 .Categories.AsNoTracking()
+                .AsSplitQuery()
                 .Include(c => c.Products)
                 .Include(c => c.Sales)
                 .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
@@ -222,7 +221,10 @@ public class CategoryRepository(ECommerceDbContext db) : ICategoryRepository
 
     private IQueryable<Category> GetBaseQuery()
     {
-        return _db.Categories.AsNoTracking().Include(c => c.Products);
+        return _db.Categories
+            .TagWith("CategoryRepository.GetBaseQuery")
+            .AsNoTracking()
+            .Include(c => c.Products);
     }
 
     private IQueryable<Category> ApplySearchFilter(IQueryable<Category> query, string? search)

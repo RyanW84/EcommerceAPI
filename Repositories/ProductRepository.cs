@@ -54,10 +54,11 @@ namespace ECommerceApp.RyanW84.Repositories
         {
             try
             {
-                Product? product = await _db
-                    .Products.AsNoTracking()
-                    .Include(p => p.Category)
-                    .FirstOrDefaultAsync(p => p.ProductId == id, cancellationToken);
+                Product? product = await CompiledQueries.GetProductByIdWithCategory(
+                    _db,
+                    id,
+                    cancellationToken
+                );
                 return new ApiResponseDto<Product?>
                 {
                     RequestFailed = false,
@@ -198,7 +199,8 @@ namespace ECommerceApp.RyanW84.Repositories
         private IQueryable<Product> GetBaseProductQuery()
         {
             return _db
-                .Products.Include(p => p.Category)
+                .Products.TagWith("ProductRepository.GetBaseProductQuery")
+                .Include(p => p.Category)
                 .Where(p => !p.IsDeleted)
                 .AsNoTracking()
                 .AsQueryable();
@@ -252,10 +254,7 @@ namespace ECommerceApp.RyanW84.Repositories
             CancellationToken cancellationToken
         )
         {
-            return _db
-                .Products.Where(p => p.ProductId == productId)
-                .Include(p => p.Category)
-                .FirstOrDefaultAsync(cancellationToken);
+            return CompiledQueries.GetProductByIdWithCategory(_db, productId, cancellationToken);
         }
 
         private static ApiResponseDto<bool> CheckConstraintViolation(DbUpdateException ex)

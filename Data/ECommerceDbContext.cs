@@ -20,6 +20,7 @@ public class ECommerceDbContext(DbContextOptions<ECommerceDbContext> options) : 
     {
         base.OnModelCreating(modelBuilder);
         ModelConfiguration.ConfigureModels(modelBuilder);
+        IndexConfiguration.ConfigureIndexes(modelBuilder);
         ConfigureGlobalQueryFilters(modelBuilder);
     }
 

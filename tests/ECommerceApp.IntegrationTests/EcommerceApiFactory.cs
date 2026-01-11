@@ -36,9 +36,12 @@ public sealed class EcommerceApiFactory : WebApplicationFactory<ECommerceApp.Rya
 
             services.RemoveAll<DbContextOptions<ECommerceDbContext>>();
 
+            // Use DbContext (not pooling) for tests to avoid shared state issues
             services.AddDbContext<ECommerceDbContext>(options =>
             {
                 options.UseSqlite(_connection);
+                options.EnableSensitiveDataLogging();
+                options.EnableDetailedErrors();
             });
         });
     }

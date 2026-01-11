@@ -18,12 +18,11 @@ public class SaleRepository(ECommerceDbContext db) : ISaleRepository
     {
         try
         {
-            Sale? sale = await _db
-                .Sales.AsNoTracking()
-                .Include(s => s.SaleItems)
-                    .ThenInclude(si => si.Product)
-                .Include(s => s.Categories)
-                .FirstOrDefaultAsync(s => s.SaleId == id, cancellationToken);
+            Sale? sale = await CompiledQueries.GetSaleByIdWithRelations(
+                _db,
+                id,
+                cancellationToken
+            );
 
             return new ApiResponseDto<Sale?>
             {
@@ -138,7 +137,9 @@ public class SaleRepository(ECommerceDbContext db) : ISaleRepository
     private IQueryable<Sale> GetBaseSalesQuery()
     {
         return _db
-            .Sales.AsNoTracking()
+            .Sales.TagWith("SaleRepository.GetBaseSalesQuery")
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(s => s.SaleItems)
                 .ThenInclude(si => si.Product)
             .Include(s => s.Categories)
