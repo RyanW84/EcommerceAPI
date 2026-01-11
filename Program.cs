@@ -69,6 +69,8 @@ public class Program
                 options.JsonSerializerOptions.WriteIndented = false; // Reduce payload size in production
                 options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
                 options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                // Performance: Handle circular references efficiently
+                options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
             });
 
         builder
@@ -76,7 +78,41 @@ public class Program
             .AddFluentValidationClientsideAdapters();
 
         builder.Services.AddValidatorsFromAssemblyContaining<ProductValidator>();
+
+        // Performance: Response caching and output caching
         builder.Services.AddResponseCaching();
+        builder.Services.AddOutputCache(options =>
+        {
+            options.AddBasePolicy(builder => builder.Cache());
+            options.AddPolicy("Products", builder => builder.Expire(TimeSpan.FromMinutes(2)).Tag("products"));
+            options.AddPolicy("Categories", builder => builder.Expire(TimeSpan.FromMinutes(5)).Tag("categories"));
+            options.AddPolicy("Sales", builder => builder.Expire(TimeSpan.FromMinutes(1)).Tag("sales"));
+        });
+
+        // Performance: Memory cache for frequently accessed data
+        builder.Services.AddMemoryCache(options =>
+        {
+            options.SizeLimit = 1024; // Limit cache size to prevent memory bloat
+            options.CompactionPercentage = 0.25; // Remove 25% when size limit reached
+        });
+
+        // Performance: HTTP Response compression
+        builder.Services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+        });
+
+        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(options =>
+        {
+            options.Level = System.IO.Compression.CompressionLevel.Fastest;
+        });
+
+        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(options =>
+        {
+            options.Level = System.IO.Compression.CompressionLevel.Fastest;
+        });
 
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
@@ -95,7 +131,20 @@ public class Program
             options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
             options.EnableDetailedErrors(builder.Environment.IsDevelopment());
             options.ConfigureWarnings(w => w.Throw(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning));
+
+            // Performance: Enable query caching and compiled model
+            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // Default to no-tracking for read operations
         }, poolSize: 128);
+
+        // Performance: Configure Kestrel server limits
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.MaxConcurrentConnections = 1000;
+            options.Limits.MaxConcurrentUpgradedConnections = 1000;
+            options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB
+            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
+        });
 
         // Options
         builder.Services.AddOptions();
@@ -136,8 +185,13 @@ public class Program
 
         app.UseForwardedHeaders();
         app.UseHttpsRedirection();
+
+        // Performance: Response compression before routing
+        app.UseResponseCompression();
+
         app.UseRouting();
         app.UseResponseCaching();
+        app.UseOutputCache(); // Output cache after response cache
         app.UseAuthorization();
         app.MapControllers();
         app.MapGet("/", () => Results.Redirect("/scalar/v1"));

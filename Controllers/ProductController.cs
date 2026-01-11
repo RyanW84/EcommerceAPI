@@ -2,6 +2,7 @@ using ECommerceApp.RyanW84.Data.DTO;
 using ECommerceApp.RyanW84.Data.Models;
 using ECommerceApp.RyanW84.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace ECommerceApp.RyanW84.Controllers;
 
@@ -24,7 +25,7 @@ public class ProductController(IProductService productService) : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Paginated list of products</returns>
     [HttpGet]
-    [ResponseCache(Duration = 30, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "*" })]
+    [OutputCache(PolicyName = "Products")]
     public async Task<IActionResult> GetProductsAsync(
         [FromQuery] ProductQueryParameters queryParameters,
         CancellationToken cancellationToken = default
@@ -46,7 +47,7 @@ public class ProductController(IProductService productService) : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The requested product or 404 Not Found</returns>
     [HttpGet("{id:int}")]
-    [ResponseCache(Duration = 120, Location = ResponseCacheLocation.Any)]
+    [OutputCache(PolicyName = "Products")]
     public async Task<IActionResult> GetProductById(
         int id,
         CancellationToken cancellationToken = default
@@ -68,11 +69,7 @@ public class ProductController(IProductService productService) : ControllerBase
 
     // GET /api/products/category/{categoryId}
     [HttpGet("category/{categoryId:int}")]
-    [ResponseCache(
-        Duration = 60,
-        Location = ResponseCacheLocation.Any,
-        VaryByQueryKeys = new[] { "categoryId" }
-    )]
+    [OutputCache(PolicyName = "Products")]
     public async Task<IActionResult> GetProductsByCategory(
         int categoryId,
         CancellationToken cancellationToken = default
@@ -89,7 +86,6 @@ public class ProductController(IProductService productService) : ControllerBase
 
     // POST /api/products
     [HttpPost]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> CreateProduct(
         [FromBody] ApiRequestDto<Product> request,
         CancellationToken cancellationToken = default
@@ -107,7 +103,6 @@ public class ProductController(IProductService productService) : ControllerBase
 
     // PUT /api/products/{id}
     [HttpPut("{id:int}")]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> UpdateProduct(
         int id,
         [FromBody] ApiRequestDto<Product> request,
@@ -126,7 +121,6 @@ public class ProductController(IProductService productService) : ControllerBase
 
     // DELETE /api/products/{id}
     [HttpDelete("{id:int}")]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> DeleteProduct(
         int id,
         CancellationToken cancellationToken = default
