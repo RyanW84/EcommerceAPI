@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace ECommerceApp.RyanW84.Controllers;
 
@@ -12,18 +13,15 @@ public static class ControllerResponseExtensions
             return controller.NoContent();
         }
 
-        var message = string.IsNullOrWhiteSpace(errorMessage)
+        var detail = string.IsNullOrWhiteSpace(errorMessage)
             ? "Request could not be completed."
             : errorMessage;
-        var payload = new { message };
 
-        return statusCode switch
-        {
-            HttpStatusCode.BadRequest => controller.BadRequest(payload),
-            HttpStatusCode.NotFound => controller.NotFound(payload),
-            HttpStatusCode.Conflict => controller.Conflict(payload),
-            HttpStatusCode.Unauthorized => controller.Unauthorized(payload),
-            _ => controller.StatusCode((int)statusCode, payload)
-        };
+        var status = (int)statusCode;
+        return controller.Problem(
+            title: ReasonPhrases.GetReasonPhrase(status),
+            detail: detail,
+            statusCode: status
+        );
     }
 }

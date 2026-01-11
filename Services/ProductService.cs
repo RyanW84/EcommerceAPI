@@ -104,6 +104,9 @@ namespace ECommerceApp.RyanW84.Services
                 );
                 if (result.RequestFailed)
                     return result;
+                if (result.Data is null)
+                    return ApiResponseDto<Product?>.Failure(HttpStatusCode.NotFound, "Product not found.");
+
                 return ApiResponseDto<Product?>.Success(result.Data);
             }
             catch (Exception ex)

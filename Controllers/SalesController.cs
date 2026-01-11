@@ -7,6 +7,7 @@ namespace ECommerceApp.RyanW84.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/sales")]
 /// <summary>
 /// Sales API endpoints.
 /// Supports creating and managing sales, including read operations that can optionally include historical (soft-deleted) products.
@@ -28,9 +29,6 @@ public class SalesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Sale> result = await _saleService.CreateSaleAsync(request, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
@@ -48,6 +46,11 @@ public class SalesController : ControllerBase
         ApiResponseDto<Sale> result = await _saleService.GetSaleByIdAsync(id, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
+
+        Response.Headers.Append(
+            "Link",
+            $"</api/v1/sales/{id}>; rel=\"self\", </api/v1/sales>; rel=\"collection\""
+        );
         return Ok(result);
     }
 
@@ -66,9 +69,6 @@ public class SalesController : ControllerBase
         CancellationToken cancellationToken = default
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         PaginatedResponseDto<List<Sale>> result = await _saleService.GetSalesAsync(queryParameters, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
@@ -87,6 +87,13 @@ public class SalesController : ControllerBase
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
         return Ok(result);
     }
+
+    // GET /api/v1/sales/history
+    // Noun-based alternative to "with-deleted-products".
+    [HttpGet("history")]
+    [ResponseCache(Duration = 30, Location = ResponseCacheLocation.Any)]
+    public Task<IActionResult> GetHistory(CancellationToken cancellationToken) =>
+        GetAllWithDeletedProducts(cancellationToken);
 
     /// <summary>
     /// Retrieves a single sale by id, including historical (soft-deleted) products.
@@ -107,6 +114,13 @@ public class SalesController : ControllerBase
         return Ok(result);
     }
 
+    // GET /api/v1/sales/{id}/history
+    // Noun-based alternative to "with-deleted-products".
+    [HttpGet("{id:int}/history")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+    public Task<IActionResult> GetByIdHistory(int id, CancellationToken cancellationToken) =>
+        GetByIdWithDeletedProducts(id, cancellationToken);
+
     // PUT /api/sales/{id}
     /// <summary>
     /// Updates an existing sale by id.
@@ -119,9 +133,6 @@ public class SalesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Sale> result = await _saleService.UpdateSaleAsync(id, request, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);

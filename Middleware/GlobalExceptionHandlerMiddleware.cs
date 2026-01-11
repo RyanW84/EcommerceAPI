@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace ECommerceApp.RyanW84.Middleware;
 
@@ -37,21 +39,27 @@ public class GlobalExceptionHandlerMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        context.Response.ContentType = "application/json";
-        var (statusCode, message) = MapExceptionToResponse(exception);
-
-        var response = new
+        if (context.Response.HasStarted)
         {
-            error = new
-            {
-                message,
-                type = exception.GetType().Name,
-                timestamp = DateTime.UtcNow,
-            },
-        };
+            return;
+        }
 
+        var (statusCode, message) = MapExceptionToResponse(exception);
         context.Response.StatusCode = statusCode;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, JsonOptions));
+        context.Response.ContentType = "application/problem+json";
+
+        var problem = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = ReasonPhrases.GetReasonPhrase(statusCode),
+            Detail = message,
+            Type = $"https://httpstatuses.com/{statusCode}",
+            Instance = context.Request.Path
+        };
+        problem.Extensions["traceId"] = context.TraceIdentifier;
+        problem.Extensions["errorType"] = exception.GetType().Name;
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
     }
 
     private static (int StatusCode, string Message) MapExceptionToResponse(Exception exception) =>

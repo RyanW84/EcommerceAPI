@@ -7,6 +7,7 @@ namespace ECommerceApp.RyanW84.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/categories")]
 /// <summary>
 /// Category CRUD API endpoints.
 /// Provides create, read (by id/name), update, delete, and soft-delete restore operations for <see cref="Category"/>.
@@ -30,9 +31,6 @@ public class CategoriesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Category> result = await _categoryService.CreateCategoryAsync(request, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
@@ -56,9 +54,6 @@ public class CategoriesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         PaginatedResponseDto<List<Category>> result = await _categoryService.GetAllCategoriesAsync(
             queryParameters,
             cancellationToken
@@ -79,6 +74,11 @@ public class CategoriesController : ControllerBase
         ApiResponseDto<Category> result = await _categoryService.GetCategoryAsync(id, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
+
+        Response.Headers.Append(
+            "Link",
+            $"</api/v1/categories/{id}>; rel=\"self\", </api/v1/categories>; rel=\"collection\""
+        );
         return Ok(result);
     }
 
@@ -112,9 +112,6 @@ public class CategoriesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Category> result = await _categoryService.UpdateCategoryAsync(id, request, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
@@ -160,6 +157,13 @@ public class CategoriesController : ControllerBase
         ApiResponseDto<bool> result = await _categoryService.RestoreCategoryAsync(id, cancellationToken);
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
-        return Ok(new { message = "Category restored successfully" });
+        return Ok(result);
     }
+
+    // POST /api/v1/categories/{id}/restorations
+    // Noun-based alternative to "restore".
+    [HttpPost("{id:int}/restorations")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public Task<IActionResult> CreateRestoration(int id, CancellationToken cancellationToken) =>
+        Restore(id, cancellationToken);
 }

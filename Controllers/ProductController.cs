@@ -11,6 +11,8 @@ namespace ECommerceApp.RyanW84.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/products")]
+[Route("api/v1/products")]
 public class ProductController(IProductService productService) : ControllerBase
 {
     private readonly IProductService _productService = productService;
@@ -28,9 +30,6 @@ public class ProductController(IProductService productService) : ControllerBase
         CancellationToken cancellationToken = default
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         PaginatedResponseDto<List<Product>> result = await _productService.GetProductsAsync(
             queryParameters,
             cancellationToken
@@ -59,8 +58,11 @@ public class ProductController(IProductService productService) : ControllerBase
         );
         if (result.RequestFailed)
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
-        if (result.Data == null)
-            return NotFound(new { message = "Product not found" });
+
+        Response.Headers.Append(
+            "Link",
+            $"</api/v1/products/{id}>; rel=\"self\", </api/v1/products>; rel=\"collection\""
+        );
         return Ok(result);
     }
 
@@ -93,9 +95,6 @@ public class ProductController(IProductService productService) : ControllerBase
         CancellationToken cancellationToken = default
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Product> result = await _productService.CreateProductAsync(
             request,
             cancellationToken
@@ -115,9 +114,6 @@ public class ProductController(IProductService productService) : ControllerBase
         CancellationToken cancellationToken = default
     )
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         ApiResponseDto<Product> result = await _productService.UpdateProductAsync(
             id,
             request,
@@ -176,4 +172,13 @@ public class ProductController(IProductService productService) : ControllerBase
             return this.FromFailure(result.ResponseCode, result.ErrorMessage);
         return Ok(result);
     }
+
+    // POST /api/v1/products/{id}/restorations
+    // Noun-based alternative to "restore".
+    [HttpPost("{id:int}/restorations")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public Task<IActionResult> CreateRestoration(
+        int id,
+        CancellationToken cancellationToken = default
+    ) => RestoreProduct(id, cancellationToken);
 }
