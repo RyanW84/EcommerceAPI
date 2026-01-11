@@ -7,6 +7,10 @@ namespace ECommerceApp.RyanW84.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+/// <summary>
+/// Sales API endpoints.
+/// Supports creating and managing sales, including read operations that can optionally include historical (soft-deleted) products.
+/// </summary>
 public class SalesController : ControllerBase
 {
     private readonly ISaleService _saleService;
@@ -14,6 +18,9 @@ public class SalesController : ControllerBase
     public SalesController(ISaleService saleService) => _saleService = saleService;
 
     // POST /api/sales
+    /// <summary>
+    /// Creates a sale with line items.
+    /// </summary>
     [HttpPost]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Create(
@@ -31,6 +38,9 @@ public class SalesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.SaleId }, result);
     }
 
+    /// <summary>
+    /// Retrieves a single sale by id.
+    /// </summary>
     [HttpGet("{id:int}")]
     [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
@@ -41,6 +51,10 @@ public class SalesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns a paginated list of sales.
+    /// Supports filtering/sorting via <see cref="SaleQueryParameters"/>.
+    /// </summary>
     [HttpGet]
     [ResponseCache(
         Duration = 30,
@@ -61,6 +75,9 @@ public class SalesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Lists sales including those whose items reference soft-deleted products (historical view).
+    /// </summary>
     [HttpGet("with-deleted-products")]
     [ResponseCache(Duration = 30, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetAllWithDeletedProducts(CancellationToken cancellationToken)
@@ -71,6 +88,9 @@ public class SalesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Retrieves a single sale by id, including historical (soft-deleted) products.
+    /// </summary>
     [HttpGet("{id:int}/with-deleted-products")]
     [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetByIdWithDeletedProducts(
@@ -88,6 +108,9 @@ public class SalesController : ControllerBase
     }
 
     // PUT /api/sales/{id}
+    /// <summary>
+    /// Updates an existing sale by id.
+    /// </summary>
     [HttpPut("{id:int}")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Update(
@@ -106,6 +129,9 @@ public class SalesController : ControllerBase
     }
 
     // DELETE /api/sales/{id}
+    /// <summary>
+    /// Soft-deletes a sale by id.
+    /// </summary>
     [HttpDelete("{id:int}")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)

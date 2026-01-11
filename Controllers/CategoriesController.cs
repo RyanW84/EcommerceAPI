@@ -7,6 +7,11 @@ namespace ECommerceApp.RyanW84.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+/// <summary>
+/// Category CRUD API endpoints.
+/// Provides create, read (by id/name), update, delete, and soft-delete restore operations for <see cref="Category"/>.
+/// Responses are wrapped in the project's standard API response DTOs and follow the same error mapping conventions.
+/// </summary>
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -15,6 +20,9 @@ public class CategoriesController : ControllerBase
         _categoryService = categoryService;
 
     // POST /api/categories
+    /// <summary>
+    /// Creates a new category.
+    /// </summary>
     [HttpPost]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Create(
@@ -33,6 +41,10 @@ public class CategoriesController : ControllerBase
     }
 
     // GET /api/categories
+    /// <summary>
+    /// Returns a paginated list of categories.
+    /// Supports filtering/sorting via <see cref="CategoryQueryParameters"/>.
+    /// </summary>
     [HttpGet]
     [ResponseCache(
         Duration = 120,
@@ -57,6 +69,9 @@ public class CategoriesController : ControllerBase
     }
 
     // GET /api/categories/{id}
+    /// <summary>
+    /// Retrieves a single category by numeric identifier.
+    /// </summary>
     [HttpGet("{id:int}")]
     [ResponseCache(Duration = 120, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
@@ -68,6 +83,9 @@ public class CategoriesController : ControllerBase
     }
 
     // GET /api/categories/name/{name}
+    /// <summary>
+    /// Retrieves a category by its name.
+    /// </summary>
     [HttpGet("name/{name}")]
     [ResponseCache(
         Duration = 60,
@@ -83,6 +101,9 @@ public class CategoriesController : ControllerBase
     }
 
     // PUT /api/categories/{id}
+    /// <summary>
+    /// Updates an existing category by id.
+    /// </summary>
     [HttpPut("{id:int}")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Update(
@@ -101,6 +122,9 @@ public class CategoriesController : ControllerBase
     }
 
     // DELETE /api/categories/{id}
+    /// <summary>
+    /// Soft-deletes a category by id.
+    /// </summary>
     [HttpDelete("{id:int}")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
@@ -112,6 +136,9 @@ public class CategoriesController : ControllerBase
     }
 
     // GET /api/categories/deleted
+    /// <summary>
+    /// Lists categories that have been soft-deleted.
+    /// </summary>
     [HttpGet("deleted")]
     [ResponseCache(Duration = 30, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetDeletedCategories(CancellationToken cancellationToken)
@@ -123,6 +150,9 @@ public class CategoriesController : ControllerBase
     }
 
     // POST /api/categories/{id}/restore
+    /// <summary>
+    /// Restores a previously soft-deleted category.
+    /// </summary>
     [HttpPost("{id:int}/restore")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Restore(int id, CancellationToken cancellationToken)
